@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.schemas import StudyMetadata, ErrorResponse
+from app.schemas import StudyMetadata
 from app.services.genelab import fetch_study_metadata, StudyNotFoundError
 
 app = FastAPI(
@@ -19,8 +19,5 @@ def read_root():
 )
 
 async def get_study_metadata(glds_id: str):
-    try:
-        metadata = await fetch_study_metadata(glds_id)
-        return metadata
-    except StudyNotFoundError as e:
-        return ErrorResponse(error="Study Not Found", detail=str(e))
+    metadata = await fetch_study_metadata(glds_id)
+    return metadata

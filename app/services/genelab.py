@@ -20,24 +20,24 @@ async def fetch_study_metadata(source_id: str) -> StudyMetadata:
                 raise HTTPException(status_code=404, detail=f"Study {clean_id} not found in NASA OSDR.")
             raise HTTPException(status_code=502, detail="Failed to connect to NASA OSDR API.")
 
-raw_data = response.json()
+    raw_data = response.json()
 
-# Transform raw data into StudyMetadata schema
-# V2 API returns a complex structure that needs to be extracted at a high-level
-# Structure is typically: {"OSD-123": {"metadata": {...}}}
+    # Transform raw data into StudyMetadata schema
+    # V2 API returns a complex structure that needs to be extracted at a high-level
+    # Structure is typically: {"OSD-123": {"metadata": {...}}}
 
-try:
-    study_root = raw_data.get(clean_id, raw_data)  # Fallback to raw_data if key not found
-    info = study_root.get("metadata", {})
+    try:
+        study_root = raw_data.get(clean_id, raw_data)  # Fallback to raw_data if key not found
+        info = study_root.get("metadata", {})
 
-    # Extract relevant fields
-    return StudyMetadata(
-        source_id = clean_id,
-        title = info.get("study title", "Unknown Title"),
-        description = info.get("study description", info.get("description", "No description available")),
-        organism = [info.get("organism", "Unknown Organism")],
-        factors = [info.get("experimental factors", "Unspecified Factor")],
-    )
-except Exception as e:
-    print(f"Debug Parse Error: {e}:")
-    raise HTTPException(status_code = 500, detail = "Error parsing OSDR data structure")
+        # Extract relevant fields
+        return StudyMetadata(
+            source_id = clean_id,
+            title = info.get("study title", "Unknown Title"),
+            description = info.get("study description", info.get("description", "No description available")),
+            organism = [info.get("organism", "Unknown Organism")],
+            factors = [info.get("experimental factors", "Unspecified Factor")],
+        )
+    except Exception as e:
+        print(f"Debug Parse Error: {e}:")
+        raise HTTPException(status_code = 500, detail = "Error parsing OSDR data structure")
