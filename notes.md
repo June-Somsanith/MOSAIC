@@ -3,7 +3,7 @@
 # 2. Cleaning up data/code
 
 
-# 3. Create the application
+# 3. Phase 1: Create the application
 
 ### 1. Installing dependencies
 
@@ -28,3 +28,5 @@ genelab.py acts as a connector to fetch data on demand without storing files loc
 We use 'async def' allows the FastAPI to remain responsive and complete other tasks while it waits for the database to send data back.
 
 Our 'async with' opesn the HTTP client safely and in the context of the 'async def' we make sure the loop isn't blocked while opening or closing network connections.
+
+# Phase 2: AI Enginerring
