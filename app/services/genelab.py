@@ -5,7 +5,7 @@ from app.schemas import StudyMetadata, ErrorResponse
 OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/dataset"
 # url might be https://visualization.osdr.nasa.gov/biodata/api/v2/datasets/?format=browser
 
-async def fetch_study_metadata(source_id: str) -> StudyMetadata:
+async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
     # Ensure all ID formats are correct
     clean_id = accession_id if accession_id.startswith("OSD-") else f"OSD-{accession_id.replace('GLDS-', '')}"
     # Creating endpoint structure: /v2/dataset/{ID}/
