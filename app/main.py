@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.schemas import StudyMetadata
-from app.services.genelab import fetch_study_metadata, StudyNotFoundError
+from app.schemas import StudyMetadata, ErrorResponse
+from app.services.genelab import fetch_study_metadata
 
 app = FastAPI(
     title = "MOSAIC Backend",
