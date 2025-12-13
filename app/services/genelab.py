@@ -11,14 +11,14 @@ async def fetch_study_metadata(source_id: str) -> StudyMetadata:
     # Creating endpoint structure: /v2/dataset/{ID}/
     url = f"{OSDR_BASE_URL}/{clean_id}/"
 
-async with httpx.AsyncClient() as client:
-    try:
-        response = await client.get(url, timeout = 15.0, follow_redirects=True)
-        response.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"Study {clean_id} not found in NASA OSDR.")
-        raise HTTPException(status_code=502, detail="Failed to connect to NASA OSDR API.")
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, timeout = 15.0, follow_redirects=True)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise HTTPException(status_code=404, detail=f"Study {clean_id} not found in NASA OSDR.")
+            raise HTTPException(status_code=502, detail="Failed to connect to NASA OSDR API.")
 
 raw_data = response.json()
 
