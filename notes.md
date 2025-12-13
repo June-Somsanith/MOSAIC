@@ -24,3 +24,7 @@ We needed to standardize schema being pulled from Genelab to ensure all incoming
 ### Connector
 
 genelab.py acts as a connector to fetch data on demand without storing files locally. This is especially important as the genomic data from genelab is quite extensive and can become quite large.
+
+We use 'async def' allows the FastAPI to remain responsive and complete other tasks while it waits for the database to send data back.
+
+Our 'async with' opesn the HTTP client safely and in the context of the 'async def' we make sure the loop isn't blocked while opening or closing network connections.

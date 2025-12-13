@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-class AnalysisMetadata(BaseModel):
+class StudyMetadata(BaseModel):
     source_id: str = Field(..., description="The ID from Genelab or other exteranal source (e.g., GLDS-123)")
     title: str
     organism: List[str]
