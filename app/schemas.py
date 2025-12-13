@@ -9,10 +9,6 @@ class StudyMetadata(BaseModel):
     factors: List[str] = Field(default=[], description="Experimental factors (e.g., Spaceflight, Radiation, Gravitational factor, etc.)")
     description: Optional[str] = None
 
-# Prep for phase 2: AI Engineering (NLP and or NER tagging)
-
-ai_tags = Optional[List[str]] = Field(default=None, description="NLP-derived tags")")
-
 class ErrorResponse(BaseModel):
     error: str
     detail: str
