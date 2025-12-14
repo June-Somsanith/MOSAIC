@@ -9,7 +9,7 @@ While this model enables the simultaneous comparison of multiple studies involvi
 
 ## Beyond Spaceflight
 While MOSAIC was conceived to address challenges in spaceflight research, its application is not confined to this field. The framework is adaptable for any orthologous gene comparison across a wide range of biological studies, provided the necessary data is available. The potential comparisons and subsequent discoveries are limited only by the scope of the user's inquiry and the current available data.
----
+
 # Methods
 
 ## 1. Creating the orthologous analysis code
