@@ -27,12 +27,43 @@ class AnalyticsService:
 
         if method == "log2_cpm":
             # 1. Calculate CPM
+            counts = df[numeric_cols]
+            cpm = counts.div(counts.sum(axis = 0), axis = 1) * 1e6
 
             # 2. Log2 transform with pseudocount
+            log_cpm = np.log2(cpm + 1)
 
             # 3. Return dataframe with normalized values
+            results = df.copy()
+            results[numeric_cols] = log_cpm
+            return results
 
         return df
     
     @staticmethod
     def run_pca(df: pd.DataFrame, n_components: int = 2) -> Dict:
+        # Perform PCA on the numeric columns of the dataframe
+        # Dropping non-numeric columns (Gene IDs) and transpose for PCA (expects samples and features)
+        numeric_data = df.select_dtypes(include = [np.number])
+        # Transpose so rows become samples and columns become features (genes)
+        X = numeric_data.T
+
+        # Standardizing features (Z-score normalization)
+        X_scaled = StandardScaler().fit_transfrom(X)
+
+        # PCA computation
+        pca = PCA(n_components = n_components)
+        components = pca.fit(transform(X_scaled))
+
+        # Frontend Formatting
+        pca_results = []
+        for i, sample_name in enumerate(numeric_df.columns):
+            results.append({
+                "sample": sample_name,
+                "PC1": float(components[i, 0]),
+                "PC2": float(components[i, 1])
+            })
+
+        return {
+            
+        }
