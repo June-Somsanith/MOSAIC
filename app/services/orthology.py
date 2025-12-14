@@ -39,6 +39,69 @@ class OrthologyService:
         
         payload = {"ids": gene_ids}
 
-        params = {}
+        params = {
+            "target_species": target_species,
+            "type": "orthologues",
+            "format": "json"
+        }
 
-        headers = {}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        try:
+            response = await client.post(url, json = payload, params = params, headers = headers, timeout = 10.0)
+            response.raise_for_status()
+            data = response.json()
+
+            # parse batch response
+            # Ensembl returns a dictionary where keys are the Gene IDs
+            batch_results = {}
+
+            for sorce_id, results_obj in data.items():
+                if not result_obj:
+                    continue
+
+                homologies = result_obj[0].get("homologies", [])
+                for hit in homologies:
+                    # Double-checking target species
+                    if hit['target_species'] == target_species and hit['is_tree_compliant'] == 1:
+                        batch_results[sorce_id] = hit['target']['id']
+                        # Stop after first high-confidence orthologue match to keep 1:1 maapping, this can be changed later
+                        break
+
+            return batch_results
+        
+        except httpx.HTTPStatusError as e:
+            # If Ensembl returns 400 bad requests, log it and don't retry
+            if e.response.status_code == 400:
+                logger.error(f"Bad request. Ensembl API error 400 for batch: {gene_ids[0]}...")
+                return {}
+            raise e
+        
+    @classmethod
+    async def map_gene_ids(cls, gene_ids: List[str], target_species: str = "human") -> Dict[str, str]:
+        """
+        Main entry point
+        Maps the batching of thousands of genes into efficient API calls. 
+        """
+
+        final_mapping = {}
+        unique_gene_ids = list(set(gene_ids)) # Remove duplicates
+
+        logger.info(f"Starting orthology mapping for {len(unique_gene_ids)} genes to {target_species}")
+
+        async with httpx.AsyncClient() as client:
+            task = []
+
+            # 1. Creating batches
+
+            # 2. Scheduling batch requests
+
+            # 3. Run all batches concurrently
+
+            # 4. Aggregateing results
+
+        logger.info(f"Mapping completed. Total mapped genes: {len(final_mapping)}. Found {len(final_mapping)} matches.")
+        return final_mapping
