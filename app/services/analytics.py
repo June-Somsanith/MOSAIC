@@ -65,5 +65,6 @@ class AnalyticsService:
             })
 
         return {
-            
+            "explained_variance": pca.explained_variance_ratio_.tolist(),
+            "coordinates": pca_results
         }
