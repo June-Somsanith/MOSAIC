@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from app.schemas import StudyMetadata, ErrorResponse
 from app.services.genelab import fetch_study_metadata
+from app.services.orthology import OrthologyService
+from app.services.analytics import AnalyticsService
 
 app = FastAPI(
     title = "MOSAIC Backend",
