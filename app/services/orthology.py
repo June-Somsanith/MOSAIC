@@ -96,12 +96,19 @@ class OrthologyService:
             task = []
 
             # 1. Creating batches
+            for batch in cls.chunk_list(unique_gene_ids, BATCH_SIZE):
+                # 2. Scheduling batch requests
+                task.append(cls.fetch_batch(client, batch, target_species))
 
-            # 2. Scheduling batch requests
-
-            # 3. Run all batches concurrently
+            # 3. Run all batches concurrently ('gather' runs them all at the same time, so efficient time complexity)
+            results = await asyncio.gather(*task, return_exceptions = True)
 
             # 4. Aggregateing results
+            for res in results:
+                if ininstance(res, dict):
+                    final_mapping.update(res)
+                elif ininstance(res, Exception):
+                    logger.error(f"Batch failed error: {str(res)}")
 
         logger.info(f"Mapping completed. Total mapped genes: {len(final_mapping)}. Found {len(final_mapping)} matches.")
         return final_mapping
