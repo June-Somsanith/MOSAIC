@@ -1,5 +1,6 @@
 # PCA/Analytics service engine
 
+from unittest import result
 import pandas as pd
 import numpy as np
 from typing import List, Dict
@@ -58,7 +59,7 @@ class AnalyticsService:
         # Frontend Formatting
         pca_results = []
         for i, sample_name in enumerate(numeric_df.columns):
-            results.append({
+            result.append({
                 "sample": sample_name,
                 "PC1": float(components[i, 0]),
                 "PC2": float(components[i, 1])

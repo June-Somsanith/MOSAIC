@@ -6,7 +6,7 @@ import httpx
 import logging
 import asyncio
 from typing import List, Dict, Optional
-import tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type # Tenacity will prevent IP address blocking due to too many requests with pandas
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type # Tenacity will prevent IP address blocking due to too many requests with pandas
 
 # configure Logging (Production Standard)
 logging.basicConfig(level = logging.INFO)
