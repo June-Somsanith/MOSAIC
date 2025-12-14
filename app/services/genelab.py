@@ -28,16 +28,44 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
 
     try:
         study_root = raw_data.get(clean_id, raw_data)  # Fallback to raw_data if key not found
-        info = study_root.get("metadata", {})
+        metadata = study_root.get("metadata", {})
 
         # Extract relevant fields
+
+        # 1. Extract organisms
+        organisms = []
+        if "organism" in metadata:
+            # handles both list and single string cases
+            org_data = metadata["organism"]
+            organisms = org_data if ininstance(org_data, list) else [str(org_data)]
+        
+        # 2. Extract tissue types
+        tissues = []
+        characteristics = metadata.get("characteristics", {})
+        if "organism tissue" in characteristics:
+            tissues.append(characteristics["organism tissue"])
+        elif "tissue" in characteristics:
+            tissues.append(characteristics["tissue"])
+
+        # 3. Extract experimental factors
+        factors = []
+        if "experimental_factors" in metadata:
+            factors = [f.get("factorName", str(f)) for f in metadata["expermimental_factors"]]
+
+        # 4. Extract mission (if available)
+        mission = metadata.get("mission_name", "Unknown Mission")
+
+
         return StudyMetadata(
             source_id = clean_id,
-            title = info.get("study title", "Unknown Title"),
-            description = info.get("study description", info.get("description", "No description available")),
-            organism = [info.get("organism", "Unknown Organism")],
-            factors = [info.get("experimental factors", "Unspecified Factor")],
+            title = metadata.get("study title", "Unknown Title"),
+            description = metadata.get("study description", info.get("description", "No description available")),
+            organism = organisms,
+            tissues = tissues,
+            factors = factors,
+            mission = mission
         )
+
     except Exception as e:
         print(f"Debug Parse Error: {e}:")
         raise HTTPException(status_code = 500, detail = "Error parsing OSDR data structure")
