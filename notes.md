@@ -2,6 +2,12 @@
 
 # 2. Cleaning up data/code
 
+Originally we had a collection of different manual scripts. We needed to combine and condense these scripts to run automatically and streamline the logic into a servicable application.
+
+We created the orthology.py file to stand in place of our BiomaRt and Species_orthology_link scripts. This new script is able to handle gene ID mapping.
+
+The analytics.py combined our Merging_dataframes.txt and AWG_transcriptomics_sorting_&adapted_IDEP9.3_code.R into a comprehensive script that could handle the merging of datasets along with normalization and PCA in one.
+
 
 # 3. Phase 1: Create the application
 
