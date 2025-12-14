@@ -22,7 +22,7 @@ We created the orthology.py file to stand in place of our BiomaRt and Species_or
 
 The analytics.py combined our Merging_dataframes.txt and AWG_transcriptomics_sorting_&adapted_IDEP9.3_code.R into a comprehensive script that could handle the merging of datasets along with normalization and PCA in one.
 
-## 3. Phase 1: Create the application
+## 3. Phase 1: Core Data Infrastructure
 
 ### 1. Installing dependencies
 
@@ -48,4 +48,16 @@ We use 'async def' allows the FastAPI to remain responsive and complete other ta
 
 Our 'async with' opesn the HTTP client safely and in the context of the 'async def' we make sure the loop isn't blocked while opening or closing network connections.
 
-## Phase 2: AI Enginerring
+## Phase 2: AI Engineering
+
+Phase 1 handles the quantitative data while phase 2 will handle the qualtitative data. Genelab study's metatdata can be difficult to categorize via title and study description without manual review. Our goal is to implement a Natural Language Processing (NLP) pipeline to classify text into categoriacl labels or taggs.
+
+### 1. NLP
+
+### 2. Automated Tagging Service
+We created a 'ai_tagger.py' within the FastAPI backend. This service:
+1. Recieves the raw text data description from NASA OSDR metadata
+2. Passes it through the transformer model
+3. Returns a ranked list of relevant scientific tags to the frontend
+
+This will allow our application to move from a data viewer to an ai research assistant that helps scientists discover relevant studies.
