@@ -65,3 +65,7 @@ This will allow our application to move from a data viewer to an ai research ass
 We utilized a Zero-shot method, which is a machine learning method in which the AI model is trained to recognize objects and concepts and catrogrize them without necessarily having seen an example of the object beforehand. The Zero-shot method allows us to make the application scalalbe as supervised learning, as is common in deep learning models, is time consuming. The annotation of large amounts of data samples is impractical.
 
 We chose the model "valhalla/distilbart-mnli-12-1" as it's speeds were the fasts of the three most common models and is more friendly towards local testing and execution. The "facebook/bart-large-mnli" model was the second contender as it's generally the "Gold Standard" and has a high intelligence, however the speeds are slow in comparison to the valhalla and uses 2x more RAM. Due to these factors, we chose to go with the valhalla model.
+
+# Results
+
+We tested our application using industry standards for python: pytest. We did this by creating a test suite and a script that runs on fastapi.testclient to test if our endpoints are behaving correctly.
