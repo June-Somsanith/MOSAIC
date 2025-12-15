@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from typing import List, Dict, Any
+from pydantic import BaseModel
 import pandas as pd
 
 # Schemas
@@ -9,6 +10,7 @@ from app.schemas import StudyMetadata, ErrorResponse
 from app.services.genelab import fetch_study_metadata
 from app.services.orthology import OrthologyService
 from app.services.analytics import AnalyticsService
+from app.services.ai_tagger import AITaggerServices
 
 # 1. FastAPI Application Instance
 app = FastAPI(
@@ -17,10 +19,19 @@ app = FastAPI(
     version = "1.0.0"
 )
 
+# 2. Request AI Tagging Service
+class AIRequest(BaseModel):
+    text: str
+    tissue: List[str] = []
+    factors: List[str] = []
+    organism: List[str] = []
+    labels: Optional[List[str]] = None
+
 @app.get("/")
 def read_root():
     return {"status": "active", "system": "MOSAIC"}
 
+# 3. Data Retrieval
 @app.get(
     "/studies/{glds_id}",
     response_model = StudyMetadata,
@@ -31,7 +42,7 @@ async def get_study_metadata(glds_id: str):
     metadata = await fetch_study_metadata(glds_id)
     return metadata
 
-# 2. Analytics and Orthology
+# 4. Analytics and Orthology
 
 @app.post("/analyze/orthology")
 async def analyze_orthology(gene_ids: List[str], target_species: str = "human"): # Need to edit to apply any str species and to recognize species names
@@ -55,3 +66,21 @@ async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
 
     except Exception as e:
         raise HTTPException(status_code = 500, detail = f"PCA Calculation Error: {str(e)}")
+
+# 5. AI Engineering
+
+@app.post("/ai/tag")
+async def auto_tag_text(payload: AIRequest):
+    # AI tagging that accepts description, tissue, factors, organism for smart classification
+    try:
+        tagging_results = AITaggerServices.generate_context_tags(
+            description = payload.text,
+            tissue = payload.tissue,
+            factors = payload.factors,
+            organism = payload.organism
+        )
+        return tagging_results
+    except Exception as e:
+        raise HTTPException(status_code = 500, detail = f"AI Error: {str(e)}")
+    
+    )
