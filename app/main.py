@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import pandas as pd
 
@@ -83,4 +83,3 @@ async def auto_tag_text(payload: AIRequest):
     except Exception as e:
         raise HTTPException(status_code = 500, detail = f"AI Error: {str(e)}")
     
-    )

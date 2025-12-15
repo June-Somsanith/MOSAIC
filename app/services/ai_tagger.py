@@ -69,7 +69,7 @@ class AITaggerServices:
         }
     
     @classmethod
-    def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str])
+    def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str]):
         # Combining Metadata and Description to give the AI more context for tagging
         rich_context = f"Tissue: {', '.join(tissue)}. Factors: {', '.join(factors)}. Organism: {', '.join(organism)}. {description}"
 
