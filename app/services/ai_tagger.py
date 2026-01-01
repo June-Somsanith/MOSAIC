@@ -3,6 +3,7 @@
 # Useing Hugging Face transformers to build a simple tagging pipeline
 
 from transformers import pipeline
+import torch
 import logging
 from typing import List, Dict
 
@@ -64,8 +65,15 @@ class AITaggerServices:
             ]
 
         classifier = cls.get_classifier()
+        hypothesis_template = "This study relates to {}."
+
         # This runs the AI model
-        results = classifier(text, candidate_labels, multi_label = True)
+        results = classifier(
+            text,
+            candidate_labels,
+            multi_label = True,
+            hypothesis_template = hypothesis_template
+            )
 
         # Filter the results based on confidence
         filtered_results = {}
@@ -75,7 +83,7 @@ class AITaggerServices:
 
         return {
             "tags": filtered_results,
-            "top_tag": results['labels'][0]
+            "top_tag": results['labels'][0] if results['labels'] else None
         }
     
     @classmethod
@@ -83,7 +91,8 @@ class AITaggerServices:
         # Combining Metadata and Description to give the AI more context for tagging
         rich_context = f"Tissue: {', '.join(tissue)}. Factors: {', '.join(factors)}. Organism: {', '.join(organism)}. {description}"
 
-        return cls.tag_text(rich_context)
+        safe_context = cls.truncate_context(rich_context)
+        return cls.tag_text(safe_context)
     
     @staticmethod
     def truncate_context(text: str, max_chars: int = 1800) -> str:
@@ -96,6 +105,3 @@ class AITaggerServices:
         # Keep first 1200 chars and last 500 chars
         half_buffer = max_chars // 2
         return f"{text[:1200]} ... [truncated] ... {text[-500:]}"
-    
-        safe_context = cls.truncate_context(rich_context)
-        return cls.tag_text(safe_context)
