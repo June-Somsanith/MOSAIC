@@ -12,6 +12,7 @@ candidate_labels = ["Radiation", "Microgravity", "Oxidative Stress", "Immune Res
 
 # Differentn asks of AI
 test_templates = [
+    "In this study {}.",
     "This text is about {}.",
     "The primary biological stressor in this spaceflight study is {}.",
     "This research investigates the cellular response to {}."

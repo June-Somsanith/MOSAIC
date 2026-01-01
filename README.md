@@ -73,6 +73,10 @@ We updated the script for:
 * Token management to keep the model within a ~512-token limit
 * Batch inference for simultaneouse tagging of studies
 
+We conducted hypothesis tuning with `test_script.py` to calibrate the AI to interpret text. Our script attempt to yield the highest confidence and best separtion between catoagories within the OSDR studies.
+
+The first version of this test resulted in a 0.96 confidence score, which indicates when the current model is searching for a stressor, it identifies it with near-certainy.
+
 # Results
 
 We tested our application using industry standards for python: pytest. We did this by creating a test suite and a script that runs on fastapi.testclient to test if our endpoints are behaving correctly.
