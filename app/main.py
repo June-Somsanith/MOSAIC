@@ -7,6 +7,7 @@ import pandas as pd
 from app.schemas import StudyMetadata, ErrorResponse
 
 # Services
+from app.services import undecided
 from app.services.genelab import fetch_study_metadata
 from app.services.orthology import OrthologyService
 from app.services.analytics import AnalyticsService
@@ -83,4 +84,20 @@ async def auto_tag_text(payload: AIRequest):
         return tagging_results
     except Exception as e:
         raise HTTPException(status_code = 500, detail = f"AI Error: {str(e)}")
-    
+
+@app.post("/studies/batch_process")
+async def get_batch_studies(ids: List[str]):
+    if len(ids) > 5:
+        # Creating a interpretability warning
+        logger.warning("Request for >5 studies. Proceeding with warning.")
+
+        try:
+            results = await undecided.process_batch_studies(ids)
+            return {
+                "count": len(results),
+                "studies": results,
+                "warning": "Data convolution risk" if len(ids) > 5 else None
+            }
+        
+        except Exception as e:
+            raise HTTPException(status_code = 500, detail = str(e))
