@@ -74,7 +74,7 @@ class AITaggerServices:
             batch,
             candidate_labels,
             multi_label = True,
-            hypothesis_template = hypothesis_template
+            hypothesis_template = hypothesis_template,
             batch_size = 8 # Adjust batch size as needed to optimize performance
         )
 
