@@ -19,9 +19,19 @@ class AITaggerServices:
     @classmethod
     def get_classifier(cls):
         if cls._classifier is None:
-            logger.info(f"Loading AI mdoel: {MODEL_NAME}")
+            # 1. Determine if GPU is available
+            device = 0 if torch.cuda.is_available() else -1
+            device_name = "GPU" if device == 0 else "CPU"
+
+            logger.info(f"Loading AI model: {MODEL_NAME} on {device_name}")
+            
             try:
-                cls._classifier = pipeline("zero-shot-classification", model = MODEL_NAME)
+                cls._classifier = pipeline(
+                    "zero-shot-classification",
+                    model = MODEL_NAME,
+                    device = device,
+                    model_kwargs = {"truncation": True}
+                    )
                 logger.info("AI model loaded successfully.")
             except Exception as e:
                 logger.error(f"Error loading AI model: {e}")

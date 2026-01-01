@@ -1,5 +1,6 @@
 import httpx
 from fastapi import HTTPException
+from numpy import info
 from app.schemas import StudyMetadata, ErrorResponse
 
 OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/dataset"
@@ -37,7 +38,7 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
         if "organism" in metadata:
             # handles both list and single string cases
             org_data = metadata["organism"]
-            organisms = org_data if ininstance(org_data, list) else [str(org_data)]
+            organisms = org_data if isinstance(org_data, list) else [str(org_data)]
         
         # 2. Extract tissue types
         tissues = []

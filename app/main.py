@@ -25,6 +25,7 @@ class AIRequest(BaseModel):
     tissue: List[str] = []
     factors: List[str] = []
     organism: List[str] = []
+    mission: Optional[str] = None
     labels: Optional[List[str]] = None
 
 @app.get("/")

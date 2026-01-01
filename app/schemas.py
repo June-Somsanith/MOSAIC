@@ -9,7 +9,7 @@ class StudyMetadata(BaseModel):
 
     # Fields to enrich AI content tagging
     organism: List[str] = Field(default_factory = list)
-    tisuse: List[str] = Field(default_factory = list, description = "Tissue types involved in the study (e.g., Liver, Eye, Root, etc.)")
+    tissue: List[str] = Field(default_factory = list, description = "Tissue types involved in the study (e.g., Liver, Eye, Root, etc.)")
     factors: List[str] = Field(default=[], description="Experimental factors (e.g., Spaceflight, Radiation, Gravitational factor, etc.)")
     mission: Optional[str] = None
     
