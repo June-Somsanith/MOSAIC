@@ -5,7 +5,7 @@
 from transformers import pipeline
 import torch
 import logging
-from typing import List, Dict
+from typing import List, Dict, Union, Optional
 
 # Logging configuration
 logging.basicConfig(level = logging.INFO)
@@ -41,10 +41,10 @@ class AITaggerServices:
         return cls._classifier
     
     @classmethod
-    def tag_text(cls, text: str, candidate_labels: List[str] = None) -> Dict:
+    def tag_text(cls, input_data: Union[str, List[str]], candidate_labels: Optional[List[str]] = None) -> Union[Dict, List[Dict]]:
         # Standard Zero-shot classification on raw text
 
-        if not text:
+        if not input_data:
             return {"error": "No text provided for tagging."}
         
         if not candidate_labels:
@@ -67,25 +67,33 @@ class AITaggerServices:
         classifier = cls.get_classifier()
         hypothesis_template = "This study relates to {}."
 
-        # This runs the AI model
-        results = classifier(
-            text,
+        # Execute Batch Inference
+        # Pipeline can handle both single string and list of strings
+        
+        batch_results = classifier(
+            batch,
             candidate_labels,
             multi_label = True,
             hypothesis_template = hypothesis_template
-            )
+            batch_size = 8 # Adjust batch size as needed to optimize performance
+        )
 
-        # Filter the results based on confidence
-        filtered_results = {}
-        for label, score in zip(results['labels'], results['scores']):
-            if score >= .60:
-                filtered_results[label] = round(score, 6)
+        # Process results to filter by confidence
+        processed_output = []
+        for res in batch_results:
+            filtered_tags = {
+                label: round(score, 4)
+                for label, score in zip(res['labels'], res['scores'])
+                if score >= 0.60
+            }
 
-        return {
-            "tags": filtered_results,
-            "top_tag": results['labels'][0] if results['labels'] else None
-        }
-    
+            processed_output.append({
+                "tags": filtered_tags,
+                "top_tag": res['labels'][0] if res['labels'] else None
+            })
+
+            return processed_output[0] if is_single else processed_output
+
     @classmethod
     def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str]):
         # Combining Metadata and Description to give the AI more context for tagging
