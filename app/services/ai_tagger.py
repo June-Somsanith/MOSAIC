@@ -84,3 +84,18 @@ class AITaggerServices:
         rich_context = f"Tissue: {', '.join(tissue)}. Factors: {', '.join(factors)}. Organism: {', '.join(organism)}. {description}"
 
         return cls.tag_text(rich_context)
+    
+    @staticmethod
+    def truncate_context(text: str, max_chars: int = 1800) -> str:
+        # Truncates text to fit within a ~512 token limit
+        # If text is too long, we keep the beginning and end
+        
+        if len(text) <= max_chars:
+            return text
+        
+        # Keep first 1200 chars and last 500 chars
+        half_buffer = max_chars // 2
+        return f"{text[:1200]} ... [truncated] ... {text[-500:]}"
+    
+        safe_context = cls.truncate_context(rich_context)
+        return cls.tag_text(safe_context)
