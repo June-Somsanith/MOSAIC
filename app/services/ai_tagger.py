@@ -65,7 +65,10 @@ class AITaggerServices:
             ]
 
         classifier = cls.get_classifier()
-        hypothesis_template = "This study relates to {}."
+        hypothesis_template = "The primary biological stressor in this spaceflight study is {}."
+
+        is_single = isinstance(input_data, str)
+        batch = [input_data] if is_single else input_data
 
         # Execute Batch Inference
         # Pipeline can handle both single string and list of strings
@@ -92,7 +95,7 @@ class AITaggerServices:
                 "top_tag": res['labels'][0] if res['labels'] else None
             })
 
-            return processed_output[0] if is_single else processed_output
+        return processed_output[0] if is_single else processed_output
 
     @classmethod
     def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str]):

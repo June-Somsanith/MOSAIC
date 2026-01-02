@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from numpy import info
 from app.schemas import StudyMetadata, ErrorResponse
 
-OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/dataset"
+OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/datasets"
 # url might be https://visualization.osdr.nasa.gov/biodata/api/v2/datasets/?format=browser
 
 async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
