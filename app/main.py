@@ -2,12 +2,15 @@ from fastapi import FastAPI, HTTPException
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import pandas as pd
+import logging
+
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger("MOSAIC")
 
 # Schemas
 from app.schemas import StudyMetadata, ErrorResponse
 
 # Services
-from app.services import undecided
 from app.services.genelab import fetch_study_metadata
 from app.services.orthology import OrthologyService
 from app.services.analytics import AnalyticsService
@@ -91,13 +94,44 @@ async def get_batch_studies(ids: List[str]):
         # Creating a interpretability warning
         logger.warning("Request for >5 studies. Proceeding with warning.")
 
-        try:
-            results = await undecided.process_batch_studies(ids)
-            return {
-                "count": len(results),
-                "studies": results,
-                "warning": "Data convolution risk" if len(ids) > 5 else None
-            }
+    try:
+        # 1. Fetch all metadata concurrently
+
+        study_metadatas = []
+        descriptions = []
+
+        for study_id in ids:
+            data = await fetch_study_metadata(study_id)
+
+            # fixing potential bug
+            logger.info(f"Raw data fro {study_id}: {data}")
+
+            if data:
+                # Making requirements less strict to return study without the study_id and silent skipping
+
+                study_info = data.get(study_id) if isinstance(data, dict) and study_id in data else data
+
+                if isinstance(study_info, dict):
+                    study_metadatas.append(study_info)
+                    descriptions.append(study_info.get("study description", ""))
+                else:
+                    logger.warning(f"Could not extract dict from {study_id}")
+
+        # 2. Batch AI Tagging
+        if descriptions:
+            ai_batch_results = AITaggerServices.tag_text(descriptions)
+
+            # 3. Merge AI results back into the study metadata
+            # Added precaution for potenial mismatch errors during AI results merging phase
+            for i in range(min(len(study_metadatas), len(ai_batch_results))):
+                study_metadatas[i]["ai_analysis"] = ai_batch_results[i]
+
+        return {
+            "count": len(study_metadatas),
+            "studies": study_metadatas,
+            "warning": "Data convolution risk" if len(ids) > 5 else None
+        }
         
-        except Exception as e:
-            raise HTTPException(status_code = 500, detail = str(e))
+    except Exception as e:
+        logger.error(f"Batch Processing Error: {str(e)}")
+        raise HTTPException(status_code = 500, detail = str(e))
