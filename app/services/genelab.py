@@ -1,7 +1,6 @@
 import httpx
 from fastapi import HTTPException
-from numpy import info
-from app.schemas import StudyMetadata, ErrorResponse
+from app.schemas import StudyMetadata
 
 OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/datasets"
 # url might be https://visualization.osdr.nasa.gov/biodata/api/v2/datasets/?format=browser
@@ -51,16 +50,16 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
         # 3. Extract experimental factors
         factors = []
         if "experimental_factors" in metadata:
-            factors = [f.get("factorName", str(f)) for f in metadata["expermimental_factors"]]
+            factors = [f.get("factorName", str(f)) for f in metadata["experimental_factors"]]
 
         # 4. Extract mission (if available)
         mission = metadata.get("mission_name", "Unknown Mission")
-
+        description_text = metadata.get("study description", "No description available")
 
         return StudyMetadata(
             source_id = clean_id,
             title = metadata.get("study title", "Unknown Title"),
-            description = metadata.get("study description", info.get("description", "No description available")),
+            description = description_text,
             organism = organisms,
             tissues = tissues,
             factors = factors,
@@ -69,4 +68,4 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
 
     except Exception as e:
         print(f"Debug Parse Error: {e}:")
-        raise HTTPException(status_code = 500, detail = "Error parsing OSDR data structure")
+        raise HTTPException(status_code = 500, detail = f"Error parsing OSDR data structure: {str(e)}")

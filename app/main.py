@@ -101,21 +101,12 @@ async def get_batch_studies(ids: List[str]):
         descriptions = []
 
         for study_id in ids:
-            data = await fetch_study_metadata(study_id)
+            data_obj = await fetch_study_metadata(study_id)
 
-            # fixing potential bug
-            logger.info(f"Raw data fro {study_id}: {data}")
-
-            if data:
-                # Making requirements less strict to return study without the study_id and silent skipping
-
-                study_info = data.get(study_id) if isinstance(data, dict) and study_id in data else data
-
-                if isinstance(study_info, dict):
-                    study_metadatas.append(study_info)
-                    descriptions.append(study_info.get("study description", ""))
-                else:
-                    logger.warning(f"Could not extract dict from {study_id}")
+            if data_obj:
+                study_dict = data_obj.dict()
+                study_metadatas.append(study_dict)
+                descriptions.append(study_dict.get("description", ""))
 
         # 2. Batch AI Tagging
         if descriptions:
