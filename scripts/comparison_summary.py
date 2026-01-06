@@ -10,7 +10,7 @@ def generate_comparison_report():
     print("MOSAIC: COMPARATIVE BIOLOGY REPORT")
     print("=" * 60)
 
-    study_ids = ["OSD-379", "OSD-137", "OSD-665", "OSD-824"]
+    study_ids = ["OSD-347", "OSD-245", "OSD-38", "OSD-37"]
 
     endpoint = f"{BASE_URL}/studies/batch_process"
 
