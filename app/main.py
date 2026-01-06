@@ -94,35 +94,44 @@ async def get_batch_studies(ids: List[str]):
         # Creating a interpretability warning
         logger.warning("Request for >5 studies. Proceeding with warning.")
 
-    try:
-        # 1. Fetch all metadata concurrently
+    study_metadatas = []
+    descriptions = []
+        
+    for study_id in ids:
+        try:
+            # 1. Fetch all metadata concurrently
 
-        study_metadatas = []
-        descriptions = []
-
-        for study_id in ids:
             data_obj = await fetch_study_metadata(study_id)
 
             if data_obj:
                 study_dict = data_obj.dict()
                 study_metadatas.append(study_dict)
                 descriptions.append(study_dict.get("description", ""))
+        
+        except Exception as e:
+            logger.error(f"Skipping {study_id} due to fetch error: {str(e)}")
+            continue
 
         # 2. Batch AI Tagging
-        if descriptions:
+    if descriptions:
+        try:
             ai_batch_results = AITaggerServices.tag_text(descriptions)
+
+            # added to make sure results are in list for merge loop
+            if isinstance(ai_batch_results, dict):
+                ai_batch_results = [ai_batch_results]
 
             # 3. Merge AI results back into the study metadata
             # Added precaution for potenial mismatch errors during AI results merging phase
             for i in range(min(len(study_metadatas), len(ai_batch_results))):
                 study_metadatas[i]["ai_analysis"] = ai_batch_results[i]
+            
+        except Exception as e:
+            logger.error(f"AI Tagging failed for batch: {str(e)}")
 
-        return {
-            "count": len(study_metadatas),
-            "studies": study_metadatas,
-            "warning": "Data convolution risk" if len(ids) > 5 else None
-        }
+    return {
+        "count": len(study_metadatas),
+        "studies": study_metadatas,
+        "warning": "Data convolution risk" if len(ids) > 5 else None
+    }
         
-    except Exception as e:
-        logger.error(f"Batch Processing Error: {str(e)}")
-        raise HTTPException(status_code = 500, detail = str(e))

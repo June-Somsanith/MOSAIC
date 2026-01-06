@@ -9,7 +9,7 @@ def generate_comparison_report():
     print("MOSAIC: COMPARATIVE BIOLOGY REPORT")
     print("=" * 60)
 
-    study_ids = ["OSD-376", "OSD-137", "OSD-665", "OSD-824"]
+    study_ids = ["OSD-379", "OSD-137", "OSD-665", "OSD-824"]
 
     endpoint = f"{BASE_URL}/studies/batch_process"
 
@@ -50,7 +50,7 @@ def generate_comparison_report():
 
         # insight generation
         print("\n### System Insights")
-        mouse_tags = [d['Primary Focus (Top Tag)'] for d in report_data if "Mus" in d['Oranism']]
+        mouse_tags = [d['Primary Focus (Top Tag)'] for d in report_data if "Mus" in d['Organism']]
         rotifer_tags = [d['Primary Focus (Top Tag)'] for d in report_data if "Adineta" in d['Organism']]
 
         print(f"1. Mouse studies primarily cluster around: {set(mouse_tags)}")
