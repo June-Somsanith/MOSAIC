@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 from tabulate import tabulate
+import os
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -23,7 +24,6 @@ def generate_comparison_report():
         for study in data['studies']:
             sid = study.get('source_id')
             organism = study.get('organism', ["Unknown"])[0]
-
             ai = study.get('ai_analysis', {})
             top_tag = ai.get ('top_tag', "None")
 
@@ -47,6 +47,12 @@ def generate_comparison_report():
 
         print("\n### Cross-Species Analysis Table")
         print(tabulate(df, headers = 'keys', tablefmt = 'fancy_grid', showindex = False)) # Change to any type of grid format: pretty, simple_outline, fancy_outline, etc.
+
+        # Save to CSV
+        output_path = "outputs/comparison_report.csv"
+        os.makedirs("outputs", exist_ok = True)
+        df.to_csv(output_path, index = False)
+        print(f"\n Report saved to: {output_path}")
 
         # insight generation
         print("\n### System Insights")
