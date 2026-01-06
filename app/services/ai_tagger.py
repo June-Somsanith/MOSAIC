@@ -49,19 +49,10 @@ class AITaggerServices:
         
         if not candidate_labels:
             candidate_labels = [
-                "Spaceflight",
-                "Radiation",
-                "Microgravity",
-                "Oxidative Stress",
-                "Immune Response",
-                "Bone Density",
-                "Muscle Atrophy",
-                "Cardiovascular Health",
-                "Gene Expression",
-                "Cellular Stress",
-                "Tissue Regeneration",
-                "Plant Biology",
-                "Microbial Response",
+                "Spaceflight Environment", "Ionizing Radiation", "Microgravity Response",
+                "Musculoskeletal System", "Cardiovascular System", "Immune System Response", "Plant Physiology",
+                "Gene Expression Profiling", "Oxidative Stress", "DNA Damage and Repair", "Epigenetic Regulation",
+                "Muscle Atrophy", "Bone Density Loss", "Visual Impairment (SANS)"
             ]
 
         classifier = cls.get_classifier()
