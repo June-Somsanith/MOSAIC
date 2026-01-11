@@ -16,7 +16,7 @@ def test_orthology_mapping():
     # 1. Test Case: Standard Mouse to Human Mapping
     # Mus musculus IDs: 
     test_payload = {
-        "gene_ids": ["18138", "11111", "999999999"],
+        "gene_ids": ["ENSMUSG00000018138", "ENSMUSG00000012396"],
         "target_species": "human",
     }
 
@@ -33,22 +33,22 @@ def test_orthology_mapping():
             print(f"SUCCESS: Received mapping for {data['mapped_gene_count']} genes.")
 
             print("\n[Mapping Results]")
-            for source, target in data['mappings'].item():
+            for source, target in data['mappings'].items():
                 status = "MAPPED" if target else "NO ORTHOLOGUES FOUND"
                 print(f"    Source ID: {source} -> Target ID: {target if target else 'N/A'} [{status}]")
 
             # Verify specific logic
-            if "18138" in data['mappings'] and data['mappings']["18138"] is not None:
-                print("\nVERIFICATION: Primary gene successfully mapped.")
+            if "ENSMUSG00000018138" in data['mappings'] and data['mappings']["ENSMUSG00000018138"] is not None:
+                print("\nVERIFICATION: Primary gene (Sox2) successfully mapped.")
             else:
-                print("\nWARNING: Primary gene failed to map. Check OrthologyService logic.")
+                print("\nWARNING: Primary gene (Sox2) failed to map. Check OrthologyService logic.")
         
         else:
-            print("FAILED: Server returned status code {response.status_code}")
+            print(f"FAILED: Server returned status code {response.status_code}")
             print(f"Error Detail: {response.text}")
 
     except requests.exceptions.ConnectionError:
-        print(f"ERROR: Could not connect to the MOSAIC server. Is unicorn running?")
+        print(f"ERROR: Could not connect to the MOSAIC server. Is uvicorn running?")
 
 if __name__ == "__main__":
     test_orthology_mapping()

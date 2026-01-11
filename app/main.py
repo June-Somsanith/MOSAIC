@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import pandas as pd
 import logging
 
@@ -47,17 +47,27 @@ async def get_study_metadata(glds_id: str):
     metadata = await fetch_study_metadata(glds_id)
     return metadata
 
+class OrthologyRequest(BaseModel):
+    gene_ids: List[str]
+    target_species: Optional[str] = "human"
+
 # 4. Analytics and Orthology
 
 @app.post("/analyze/orthology")
-async def analyze_orthology(gene_ids: List[str], target_species: str = "human"): # Need to edit to apply any str species and to recognize species names
-    mapping = await OrthologyService.map_gene_ids(gene_ids, target_species = target_species)
-
-    return{
-        "source_gene_count": len(gene_ids),
-        "mapped_gene_count": len(mapping),
-        "mappings": mapping
-    }
+async def analyze_orthology(payload: OrthologyRequest): # Need to edit to apply any str species and to recognize species names
+    try:
+        mapping = await OrthologyService.map_gene_ids(
+            gene_ids = payload.gene_ids,
+            target_species = payload.target_species
+        )
+        return{
+            "source_gene_count": len(payload.gene_ids),
+            "mapped_gene_count": len(mapping),
+            "mappings": mapping
+        }
+    except Exception as e:
+        logger.erro(f"Orthology Mapping Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze/pca")
 async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
