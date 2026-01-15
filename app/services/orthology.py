@@ -17,8 +17,6 @@ ENSEMBL_API_URL = "https://rest.ensembl.org"
 BATCH_SIZE = 50 # Number of genes processed in each batch, Ensebl recommends batches of 50 - 100 IDs
 
 # Adding common names mapping for Ensembl Scientific nomenclature
-# May want to make this into NLP or LM eventually
-
 SPECIES_MAP = {
     "human": "homo_sapiens",
     "mouse": "mus_musculus",
