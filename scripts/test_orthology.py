@@ -17,28 +17,30 @@ def test_orthology_mapping():
     # Mus musculus IDs: 
     test_payload = {
         "gene_ids": ["ENSMUSG00000018138", "ENSMUSG00000012396"],
-        "target_species": "human",
+        "target_species": "human"
     }
 
     print(f"Sending {len(test_payload['gene_ids'])} gene IDs for mapping to {test_payload['target_species']}...")
 
     try:
-        response = requests.post(f"{BASE_URL}{ENDPOINT}",
-            json = test_payload["gene_ids"], 
-            params = {"target_species":
-                      test_payload["target_species"]})
+        response = requests.post(
+            f"{BASE_URL}{ENDPOINT}",
+            json = test_payload
+        )
         
         if response.status_code == 200:
             data = response.json()
-            print(f"SUCCESS: Received mapping for {data['mapped_gene_count']} genes.")
+            mappings = data.get('mappings', {})
+
+            print(f"SUCCESS: Received mapping for {data.get('mapped_gene_count', 0)} genes.")
 
             print("\n[Mapping Results]")
-            for source, target in data['mappings'].items():
+            for source, target in mappings.items():
                 status = "MAPPED" if target else "NO ORTHOLOGUES FOUND"
                 print(f"    Source ID: {source} -> Target ID: {target if target else 'N/A'} [{status}]")
 
             # Verify specific logic
-            if "ENSMUSG00000018138" in data['mappings'] and data['mappings']["ENSMUSG00000018138"] is not None:
+            if mappings.get("ENSMUSG00000018138"):
                 print("\nVERIFICATION: Primary gene (Sox2) successfully mapped.")
             else:
                 print("\nWARNING: Primary gene (Sox2) failed to map. Check OrthologyService logic.")
