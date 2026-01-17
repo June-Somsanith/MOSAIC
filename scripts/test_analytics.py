@@ -1,7 +1,6 @@
 # Does PCA logic correctly handle realistic data sizes
 # Is it able to send a mock dataset to /analyze/pca
 
-import os
 import requests
 import json
 import random
@@ -47,8 +46,8 @@ def test_pca_analysis():
             # print variance
             var = result.get("explained_variance", [])
             print(f"\n[Variance Explained]")
-            print(f"PC1: {var[0]*100:.2f}%")
-            print(f"PC2: {var[1]*100:.2f}%)
+            print(f"    PC1: {var[0]*100:.2f}%")
+            print(f"    PC2: {var[1]*100:.2f}%")
             
             # Print first few coordinates
             print(f"\n[Sample Coordinates (Subset)]")
