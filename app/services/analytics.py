@@ -2,11 +2,12 @@
 
 import pandas as pd
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Any
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import logging
 
+logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger("MOSAIC.Analytics")
 
 class AnalyticsService:
