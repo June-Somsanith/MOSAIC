@@ -66,7 +66,7 @@ async def analyze_orthology(payload: OrthologyRequest): # Need to edit to apply 
             "mappings": mapping
         }
     except Exception as e:
-        logger.erro(f"Orthology Mapping Failed: {str(e)}")
+        logger.error(f"Orthology Mapping Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze/pca")
@@ -142,6 +142,7 @@ async def get_batch_studies(ids: List[str]):
     return {
         "count": len(study_metadatas),
         "studies": study_metadatas,
+        "batch_status": "complete",
         "warning": "Data convolution risk" if len(ids) > 5 else None
     }
         
