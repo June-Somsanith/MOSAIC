@@ -1,4 +1,9 @@
+import os
+import sys
 import torch
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.services.ai_tagger import AITaggerServices
 
 # Abstract snippet from NASA OSDR

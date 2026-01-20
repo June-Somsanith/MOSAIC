@@ -1,9 +1,14 @@
 # Can MOSAIC application handle federated access issues
 # pass ids, request some valid and some invalid id's don't crash system, no abstract, etc
 
+import os
+import sys
 import asyncio
 import httpx
 from unittest.mock import MagicMock, patch
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.services.orthology import OrthologyService
 
 async def test_resilience_logic():
@@ -34,4 +39,13 @@ async def test_resilience_logic():
 
         if actual_calls > 1:
             print("Success: Resiliance layer detected")
+        else:
+            print("WARNING: Resilience layer did not execute retries as expected.")
+    except Exception as e:
+        print(f"RESILIENCE CRASH: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(test_resilience_logic())
+
+
 

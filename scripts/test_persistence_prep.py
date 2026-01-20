@@ -1,9 +1,13 @@
 # Simulating cache hit vs cache miss
 # Measuring time difference between fetching data from API vs mock version from local json file
 
+import os
+import sys
 import json
 import pandas as pd
 import numpy as np
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_persistance_seril():
     print("=" * 60)
