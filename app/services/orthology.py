@@ -51,7 +51,9 @@ class OrthologyService:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=10),
-        retry=retry_if_exception_type(httpx.RequestError)
+        retry=(retry_if_exception_type(httpx.RequestError) |
+        retry_if_exception_type(httpx.HTTPStatusError)
+        )
     )
     async def fetch_single_orthology(client: httpx.AsyncClient, gene_id: str, target_species: str) -> Optional[tuple]:
         """
@@ -76,34 +78,26 @@ class OrthologyService:
         
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
-        try:
             # FIX: Ensembl homology/id/:species/:id endpoint requires GET, not POST
-            response = await client.get(url, params=params, headers=headers, timeout=10.0)
-            
-            if response.status_code == 400:
-                return gene_id, None
+        response = await client.get(url, params=params, headers=headers, timeout=10.0)
                 
-            response.raise_for_status()
-            data = response.json()
+        response.raise_for_status()
+        data = response.json()
             
             # Navigate nested JSON: data -> [0] -> homologies
-            homology_list = data.get("data", [{}])[0].get("homologies", [])
+        homology_list = data.get("data", [{}])[0].get("homologies", [])
             
-            for hit in homology_list:
-                target_info = hit.get("target", {})
-                hit_species = str(target_info.get("species", "")).lower().replace("_", "")
-                target_comp = clean_target.lower().replace("_", "")
+        for hit in homology_list:
+            target_info = hit.get("target", {})
+            hit_species = str(target_info.get("species", "")).lower().replace("_", "")
+            target_comp = clean_target.lower().replace("_", "")
                 
-                if hit_species == target_comp:
-                    target_id = target_info.get("id")
-                    logger.info(f"MATCH FOUND: {gene_id} -> {target_id}")
-                    return gene_id, target_id
+            if hit_species == target_comp:
+                target_id = target_info.get("id")
+                logger.info(f"MATCH FOUND: {gene_id} -> {target_id}")
+                return gene_id, target_id
             
-            return gene_id, None
-            
-        except Exception as e:
-            logger.warning(f"Failed to fetch orthology for {gene_id}: {str(e)}")
-            return gene_id, None
+        return gene_id, None
 
     @classmethod
     async def map_gene_ids(cls, gene_ids: List[str], target_species: str = "human") -> Dict[str, str]:
