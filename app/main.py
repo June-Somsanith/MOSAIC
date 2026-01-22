@@ -18,7 +18,7 @@ from app.services.ai_tagger import AITaggerServices
 
 # 1. FastAPI Application Instance
 app = FastAPI(
-    title = "MOSAIC Backend",
+    title = "MOSAIC BACKEND API",
     description = "Multi-Organism Spaceflight Analysis and Integrated Comparison",
     version = "1.0.0"
 )
@@ -46,6 +46,36 @@ def read_root():
 async def get_study_metadata(glds_id: str):
     metadata = await fetch_study_metadata(glds_id)
     return metadata
+
+@app.get("/studies/{glds_id}/enriched", response_model=dict)
+async def get_enriched_study_metadata(glds_id: str):
+    # Integrating set fechtches metadata from OSDR and immediately applies AI-driven context tagging.
+
+    try:
+        # 1. genelab.py fetch
+        metadata = await fetch_study_metadata(glds_id)
+        return metadata
+    
+        # 2. ai_tagger.py classification
+        # Passing rich metadata fields into generate_context-tags to provide ai with better context than description alone
+        ai_analysis = AITaggerServices.generate_context_tags(
+            description=study_metadata.description,
+            tissue=study_metadata.tissue,
+            factors=study_metadata.factors,
+            organism=study_metadata.organism
+        )
+
+        # 3. Merge for complete biological context
+        return {
+            "source_id": study_metadata.source_id,
+            "title": study_metadata.title,
+            "metadata": study_metadata.dict(),
+            "ai_analysis": ai_analysis
+        }
+    
+    except Exception as e:
+        logger.error(f"Enriched Data Pipeline Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
 
 class OrthologyRequest(BaseModel):
     gene_ids: List[str]
