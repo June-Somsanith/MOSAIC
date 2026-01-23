@@ -53,8 +53,8 @@ async def get_enriched_study_metadata(glds_id: str):
 
     try:
         # 1. genelab.py fetch
-        metadata = await fetch_study_metadata(glds_id)
-        return metadata
+        study_metadata = await fetch_study_metadata(glds_id)
+
     
         # 2. ai_tagger.py classification
         # Passing rich metadata fields into generate_context-tags to provide ai with better context than description alone

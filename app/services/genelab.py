@@ -1,10 +1,17 @@
 import httpx
 from fastapi import HTTPException
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.schemas import StudyMetadata
 
 OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/datasets"
 # url might be https://visualization.osdr.nasa.gov/biodata/api/v2/datasets/?format=browser
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(min=2, max=10),
+    retry=(retry_if_exception_type(httpx.RequestError) |
+    retry_if_exception_type(httpx.HTTPStatusError))
+)
 async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
     # Ensure all ID formats are correct
     clean_id = accession_id if accession_id.startswith("OSD-") else f"OSD-{accession_id.replace('GLDS-', '')}"
@@ -12,13 +19,12 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
     url = f"{OSDR_BASE_URL}/{clean_id}/"
 
     async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, timeout = 15.0, follow_redirects=True)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                raise HTTPException(status_code=404, detail=f"Study {clean_id} not found in NASA OSDR.")
-            raise HTTPException(status_code=502, detail="Failed to connect to NASA OSDR API.")
+        response = await client.get(url, timeout = 15.0, follow_redirects=True)
+        
+        if response.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"Study {clean_id} not found in NASA OSDR.")   
+        
+        response.raise_for_status()
 
     raw_data = response.json()
 
@@ -53,12 +59,12 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
             factors = [f.get("factorName", str(f)) for f in metadata["experimental_factors"]]
 
         # 4. Extract mission (if available)
-        mission = metadata.get("mission_name", "Unknown Mission")
-        description_text = metadata.get("study description", "No description available")
+        mission = metadata.get("mission_name", metadata.get("mission", "Unknown Mission"))
+        description_text = metadata.get("study description", metadata.get("description", "No description available"))
 
         return StudyMetadata(
             source_id = clean_id,
-            title = metadata.get("study title", "Unknown Title"),
+            title = metadata.get("study title", metadata.get("title", "Unknown Title")),
             description = description_text,
             organism = organisms,
             tissues = tissues,

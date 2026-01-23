@@ -14,6 +14,20 @@ logger = logging.getLogger(__name__)
 # Zero-shot model for tagging
 MODEL_NAME = "valhalla/distilbart-mnli-12-1"
 
+# Adding default biological and environmental labels for OSDR context
+DEFAULT_LABELS = [
+    "Spaceflight",
+    "Microgravity",
+    "Liver Metabolism",
+    "Ground Control",
+    "Metabolic Stress",
+    "Ionizing Radiation",
+    "Immune Response",
+    "Muscular Atrophy",
+    "Tissue Regeneration",
+    "Transcriptional Profiling",
+]
+
 class AITaggerServices:
     _classifier = None
 
