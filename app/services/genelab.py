@@ -59,7 +59,12 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
             factors = [f.get("factorName", str(f)) for f in metadata["experimental_factors"]]
 
         # 4. Extract mission (if available)
-        mission = metadata.get("mission_name", metadata.get("mission", "Unknown Mission"))
+        mission_raw = metadata.get("mission_name", metadata.get("mission", "Unknown Mission"))
+        if isinstance(mission_raw, dict):
+            mission = mission_raw.get("name", str(mission_raw))
+        else:
+            mission = str(mission_raw)
+
         description_text = metadata.get("study description", metadata.get("description", "No description available"))
 
         return StudyMetadata(
