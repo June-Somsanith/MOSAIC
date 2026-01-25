@@ -78,7 +78,7 @@ class AITaggerServices:
         
         batch_results = classifier(
             batch,
-            candidate_labels,
+            labels,
             multi_label = True,
             hypothesis_template = hypothesis_template,
             batch_size = 8 # Adjust batch size as needed to optimize performance
@@ -90,7 +90,7 @@ class AITaggerServices:
             filtered_tags = {
                 label: round(score, 4)
                 for label, score in zip(res['labels'], res['scores'])
-                if score >= 0.50
+                if score >= 0.40
             }
 
             processed_output.append({
