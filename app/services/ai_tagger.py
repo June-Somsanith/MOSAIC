@@ -90,7 +90,7 @@ class AITaggerServices:
             filtered_tags = {
                 label: round(score, 4)
                 for label, score in zip(res['labels'], res['scores'])
-                if score >= 0.40
+                if score >= 0.05
             }
 
             processed_output.append({

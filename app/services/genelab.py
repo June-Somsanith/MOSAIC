@@ -44,20 +44,26 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
 
         # 1. Extract organisms
         organisms = []
-        if "organism" in metadata:
-            # handles both list and single string cases
-            org_data = metadata["organism"]
-            organisms = org_data if isinstance(org_data, list) else [str(org_data)]
+        org_raw = metadata.get("organism")
+        if org_raw:
+            organisms = org_raw if isinstance(org_raw, list) else [str(org_raw)]
         
         # 2. Extract tissue types
         tissues = []
         chars = metadata.get("characteristics", {})
-        for key, value in chars.items():
-            if "tissue" in key.lower():
-                if isinstance(value, list):
-                    tissues.extend(value)
-                else:
-                    tissues.append(str(value))
+
+        target_pattern = ["tissue", "tissue type", "tissue_type", "part", "material", "source", "sample_source"]
+
+        if isinstance(chars, dict):
+            for key, value in chars.items():
+                low_key = key.lower():
+                if any(pattern in low_key for pattern in target_pattern):
+                    if isinstance(value, list):
+                        tissues.extend(value)
+                    else:
+                        tissues.append(str(value))
+        elif isinstance(chars, str) and chars:
+                tissues.append(chars)
 
         tissues = list(set([t for t in tissues if t]))
 
@@ -73,7 +79,9 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
 
         # 4. Extract mission (if available)
         mission_raw = metadata.get("mission_name", metadata.get("mission", "Unknown Mission"))
-        if isinstance(mission_raw, dict):
+        if not mission_raw or (isinstance(mission_raw, str)) and mission_raw.strip() == "":
+            mission = "Unknown Mission"
+        elif isinstance(mission_raw, dict):
             mission = mission_raw.get("name", str(mission_raw))
         else:
             mission = str(mission_raw)

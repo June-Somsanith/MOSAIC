@@ -5,7 +5,7 @@ import requests
 import json
 
 BASE_URL = "http://127.0.0.1:8000"
-TEST_ID = "337"
+TEST_ID = "899"
 ENDPOINT = f"/studies/{TEST_ID}/enriched"
 
 def test_enriched_pipeline():
