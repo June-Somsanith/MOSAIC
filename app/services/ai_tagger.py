@@ -24,6 +24,10 @@ DEFAULT_LABELS = [
     "Ionizing Radiation",
     "Immune Response",
     "Muscular Atrophy",
+    "Musculoskeletal System",
+    "DNA Damage",
+    "Oxidative Stress",
+    "Plant Growth",
     "Tissue Regeneration",
     "Transcriptional Profiling",
 ]
@@ -61,13 +65,7 @@ class AITaggerServices:
         if not input_data:
             return {"error": "No text provided for tagging."}
         
-        if not candidate_labels:
-            candidate_labels = [
-                "Spaceflight Environment", "Ionizing Radiation", "Microgravity Response",
-                "Musculoskeletal System", "Cardiovascular System", "Immune System Response", "Plant Physiology",
-                "Gene Expression Profiling", "Oxidative Stress", "DNA Damage and Repair", "Epigenetic Regulation",
-                "Muscle Atrophy", "Bone Density Loss", "Visual Impairment (SANS)"
-            ]
+        labels = candidate_labels if candidate_labels else DEFAULT_LABELS
 
         classifier = cls.get_classifier()
         hypothesis_template = "The primary biological stressor in this spaceflight study is {}."
