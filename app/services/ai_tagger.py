@@ -21,7 +21,7 @@ DEFAULT_LABELS = [
     "Liver Metabolism",
     "Ground Control",
     "Metabolic Stress",
-    "Ionizing Radiation",
+    "Radiation Exposure",
     "Immune Response",
     "Muscular Atrophy",
     "Musculoskeletal System",
@@ -103,7 +103,11 @@ class AITaggerServices:
     @classmethod
     def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str]):
         # Combining Metadata and Description to give the AI more context for tagging
-        rich_context = f"Tissue: {', '.join(tissue)}. Factors: {', '.join(factors)}. Organism: {', '.join(organism)}. {description}"
+        t_str = ', '.join(tissue) if tissue else "Unknown Tissue"
+        f_str = ', '.join(factors) if factors else "Unknown Factors"
+        o_str = ', '.join(organism) if organism else "Unknown Organism"
+
+        rich_context = f"Tissue: {t_str}. Factors: {f_str}. Organism: {o_str}. {description}"
 
         safe_context = cls.truncate_context(rich_context)
         return cls.tag_text(safe_context)

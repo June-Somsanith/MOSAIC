@@ -2,6 +2,10 @@ import httpx
 from fastapi import HTTPException
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.schemas import StudyMetadata
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 OSDR_BASE_URL = "https://visualization.osdr.nasa.gov/biodata/api/v2/datasets"
 # url might be https://visualization.osdr.nasa.gov/biodata/api/v2/datasets/?format=browser
@@ -47,16 +51,25 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
         
         # 2. Extract tissue types
         tissues = []
-        characteristics = metadata.get("characteristics", {})
-        if "organism tissue" in characteristics:
-            tissues.append(characteristics["organism tissue"])
-        elif "tissue" in characteristics:
-            tissues.append(characteristics["tissue"])
+        chars = metadata.get("characteristics", {})
+        for key, value in chars.items():
+            if "tissue" in key.lower():
+                if isinstance(value, list):
+                    tissues.extend(value)
+                else:
+                    tissues.append(str(value))
+
+        tissues = list(set([t for t in tissues if t]))
 
         # 3. Extract experimental factors
         factors = []
-        if "experimental_factors" in metadata:
-            factors = [f.get("factorName", str(f)) for f in metadata["experimental_factors"]]
+        factor_sources = metadata.get("experimental factors", metadata.get("experimental factors", metadata.get("factors", [])))
+        if isinstance(factor_sources, list):
+            for f in factor_sources:
+                if isinstance(f, dict):
+                    factors.append(f.get("factorName", f.get("name", str(f))))
+                else:
+                    factors.append(str(f))
 
         # 4. Extract mission (if available)
         mission_raw = metadata.get("mission_name", metadata.get("mission", "Unknown Mission"))
@@ -78,5 +91,5 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
         )
 
     except Exception as e:
-        print(f"Debug Parse Error: {e}:")
+        logger.error(f"Debug Parse Error for {clean_id}: {str(e)}")
         raise HTTPException(status_code = 500, detail = f"Error parsing OSDR data structure: {str(e)}")
