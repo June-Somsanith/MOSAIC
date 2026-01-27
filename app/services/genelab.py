@@ -56,7 +56,7 @@ async def fetch_study_metadata(accession_id: str) -> StudyMetadata:
 
         if isinstance(chars, dict):
             for key, value in chars.items():
-                low_key = key.lower():
+                low_key = key.lower()
                 if any(pattern in low_key for pattern in target_pattern):
                     if isinstance(value, list):
                         tissues.extend(value)
