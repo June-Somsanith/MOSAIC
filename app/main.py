@@ -27,7 +27,7 @@ app = FastAPI(
 # 2. Request AI Tagging Service Schema
 class AIRequest(BaseModel):
     text: str
-    tissues: List[str] = []
+    tissue: List[str] = [] # Aligned to singular to match StudyMetadata schema
     factors: List[str] = []
     organism: List[str] = []
     mission: Optional[str] = None
@@ -56,16 +56,15 @@ async def get_enriched_study_metadata(glds_id: str):
         study_metadata = await fetch_study_metadata(glds_id)
 
         # 2. Classification Phase: ai_tagger.py classification
-        # Passing rich metadata fields into generate_context_tags to provide AI with better context than description alone
+        # FIX: Changed 'study_metadata.tissues' to 'study_metadata.tissue' to match schema.
         ai_analysis = AITaggerServices.generate_context_tags(
             description=study_metadata.description,
-            tissue=study_metadata.tissues,
+            tissue=study_metadata.tissue,
             factors=study_metadata.factors,
             organism=study_metadata.organism
         )
 
         # 3. Aggregation Phase: Merge for complete biological context
-        # FIX: Changed key from "ai_analysis" to "ai_classification" to match test_ai_integration.py
         return {
             "source_id": study_metadata.source_id,
             "title": study_metadata.title,
@@ -84,7 +83,7 @@ class OrthologyRequest(BaseModel):
 # 4. Analytics and Orthology
 
 @app.post("/analyze/orthology")
-async def analyze_orthology(payload: OrthologyRequest): # Need to edit to apply any str species and to recognize species names
+async def analyze_orthology(payload: OrthologyRequest):
     try:
         mapping = await OrthologyService.map_gene_ids(
             gene_ids = payload.gene_ids,
@@ -117,11 +116,11 @@ async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
 
 @app.post("/ai/tag")
 async def auto_tag_text(payload: AIRequest):
-    # AI tagging that accepts description, tissues, factors, organism for smart classification
+    # AI tagging that accepts description, tissue, factors, organism for smart classification
     try:
         tagging_results = AITaggerServices.generate_context_tags(
             description = payload.text,
-            tissue = payload.tissues,
+            tissue = payload.tissue, # Aligned to singular
             factors = payload.factors,
             organism = payload.organism
         )
@@ -164,7 +163,6 @@ async def get_batch_studies(ids: List[str]):
                 ai_batch_results = [ai_batch_results]
 
             # 3. Merge AI results back into the study metadata
-            # Added precaution for potential mismatch errors during AI results merging phase
             for i in range(min(len(study_metadatas), len(ai_batch_results))):
                 study_metadatas[i]["ai_classification"] = ai_batch_results[i]
             
