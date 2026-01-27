@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 import pandas as pd
 import logging
 
+# Configure Logging (Production Standard)
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger("MOSAIC")
 
@@ -23,10 +24,10 @@ app = FastAPI(
     version = "1.0.0"
 )
 
-# 2. Request AI Tagging Service
+# 2. Request AI Tagging Service Schema
 class AIRequest(BaseModel):
     text: str
-    tissue: List[str] = []
+    tissues: List[str] = []
     factors: List[str] = []
     organism: List[str] = []
     mission: Optional[str] = None
@@ -36,7 +37,7 @@ class AIRequest(BaseModel):
 def read_root():
     return {"status": "active", "system": "MOSAIC"}
 
-# 3. Data Retrieval
+# 3. Data Retrieval & Integrated Enrichment
 @app.get(
     "/studies/{glds_id}",
     response_model = StudyMetadata,
@@ -49,28 +50,27 @@ async def get_study_metadata(glds_id: str):
 
 @app.get("/studies/{glds_id}/enriched", response_model=dict)
 async def get_enriched_study_metadata(glds_id: str):
-    # Integrating set fechtches metadata from OSDR and immediately applies AI-driven context tagging.
-
+    # Integrating set fetches metadata from OSDR and immediately applies AI-driven context tagging.
     try:
-        # 1. genelab.py fetch
+        # 1. Ingestion Phase: genelab.py fetch
         study_metadata = await fetch_study_metadata(glds_id)
 
-    
-        # 2. ai_tagger.py classification
-        # Passing rich metadata fields into generate_context-tags to provide ai with better context than description alone
+        # 2. Classification Phase: ai_tagger.py classification
+        # Passing rich metadata fields into generate_context_tags to provide AI with better context than description alone
         ai_analysis = AITaggerServices.generate_context_tags(
             description=study_metadata.description,
-            tissue=study_metadata.tissue,
+            tissue=study_metadata.tissues,
             factors=study_metadata.factors,
             organism=study_metadata.organism
         )
 
-        # 3. Merge for complete biological context
+        # 3. Aggregation Phase: Merge for complete biological context
+        # FIX: Changed key from "ai_analysis" to "ai_classification" to match test_ai_integration.py
         return {
             "source_id": study_metadata.source_id,
             "title": study_metadata.title,
             "metadata": study_metadata.dict(),
-            "ai_analysis": ai_analysis
+            "ai_classification": ai_analysis
         }
     
     except Exception as e:
@@ -105,33 +105,36 @@ async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
         # 1. Convert incoming JSON list into Pandas DataFrames
         df = pd.DataFrame(data)
 
-        # 2. Run PCA logic dfeined in Analytics Service
+        # 2. Run PCA logic defined in Analytics Service
         pca_results = AnalyticsService.run_pca(df, n_components = n_components)
         return pca_results
 
     except Exception as e:
+        logger.error(f"PCA Calculation Failed: {str(e)}")
         raise HTTPException(status_code = 500, detail = f"PCA Calculation Error: {str(e)}")
 
 # 5. AI Engineering
 
 @app.post("/ai/tag")
 async def auto_tag_text(payload: AIRequest):
-    # AI tagging that accepts description, tissue, factors, organism for smart classification
+    # AI tagging that accepts description, tissues, factors, organism for smart classification
     try:
         tagging_results = AITaggerServices.generate_context_tags(
             description = payload.text,
-            tissue = payload.tissue,
+            tissue = payload.tissues,
             factors = payload.factors,
             organism = payload.organism
         )
         return tagging_results
     except Exception as e:
+        logger.error(f"AI Tagging Error: {str(e)}")
         raise HTTPException(status_code = 500, detail = f"AI Error: {str(e)}")
 
 @app.post("/studies/batch_process")
 async def get_batch_studies(ids: List[str]):
+    """Orchestrates high-volume batch processing for multiple study IDs."""
     if len(ids) > 5:
-        # Creating a interpretability warning
+        # Creating an interpretability warning
         logger.warning("Request for >5 studies. Proceeding with warning.")
 
     study_metadatas = []
@@ -140,7 +143,6 @@ async def get_batch_studies(ids: List[str]):
     for study_id in ids:
         try:
             # 1. Fetch all metadata concurrently
-
             data_obj = await fetch_study_metadata(study_id)
 
             if data_obj:
@@ -152,19 +154,19 @@ async def get_batch_studies(ids: List[str]):
             logger.error(f"Skipping {study_id} due to fetch error: {str(e)}")
             continue
 
-        # 2. Batch AI Tagging
+    # 2. Batch AI Tagging
     if descriptions:
         try:
             ai_batch_results = AITaggerServices.tag_text(descriptions)
 
-            # added to make sure results are in list for merge loop
+            # Added to make sure results are in list for merge loop
             if isinstance(ai_batch_results, dict):
                 ai_batch_results = [ai_batch_results]
 
             # 3. Merge AI results back into the study metadata
-            # Added precaution for potenial mismatch errors during AI results merging phase
+            # Added precaution for potential mismatch errors during AI results merging phase
             for i in range(min(len(study_metadatas), len(ai_batch_results))):
-                study_metadatas[i]["ai_analysis"] = ai_batch_results[i]
+                study_metadatas[i]["ai_classification"] = ai_batch_results[i]
             
         except Exception as e:
             logger.error(f"AI Tagging failed for batch: {str(e)}")
@@ -175,4 +177,3 @@ async def get_batch_studies(ids: List[str]):
         "batch_status": "complete",
         "warning": "Data convolution risk" if len(ids) > 5 else None
     }
-        
