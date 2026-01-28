@@ -87,12 +87,12 @@ class AITaggerServices:
             filtered_tags = {
                 label: round(score, 4)
                 for label, score in zip(res['labels'], res['scores'])
-                if score >= 0.90
+                if score >= 0.05
             }
 
             processed_output.append({
                 "tags": filtered_tags,
-                "primary_stressor": res['labels'][0] if res['labels'] else None
+                "primary_stressor": res['labels'][0] if res['labels'] else None,
                 "confidence": round(res['scores'][0], 4) if res['scores'] else 0,
                 "high_confidence_alert": res['scores'][0] >=0.95
             })
@@ -102,12 +102,14 @@ class AITaggerServices:
     @classmethod
     def generate_context_tags(cls, description: str, tissue: List[str], factors: List[str], organism: List[str]):
         # Combining Metadata and Description to give the AI more context for tagging
-        t_str = ', '.join(tissue) if tissue else "Unknown Tissue"
-        f_str = ', '.join(factors) if factors else "Unknown Factors"
-        o_str = ', '.join(organism) if organism else "Unknown Organism"
+        t_str = ', '.join(tissue) if tissue else "Unknown"
+        f_str = ', '.join(factors) if factors else "Unknown"
+        o_str = ', '.join(organism) if organism else "Unknown"
 
-        rich_context = f"Tissue: {t_str}. Factors: {f_str}. Organism: {o_str}. {description}"
-
+        # Constructing the high-intensity stimulus string
+        base_context = f"SUBJECT: {o_str} | TISSUE: {t_str} | STRESSORS: {f_str} | DESCRIPTION: {description}"
+        rich_context = f"{base_context} | SUMMARY: Biological investigation of {t_str} in {o_str} involving {f_str}."
+        
         safe_context = cls.truncate_context(rich_context)
         return cls.tag_text(safe_context)
     
