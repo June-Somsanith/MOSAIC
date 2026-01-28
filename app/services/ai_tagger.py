@@ -87,12 +87,14 @@ class AITaggerServices:
             filtered_tags = {
                 label: round(score, 4)
                 for label, score in zip(res['labels'], res['scores'])
-                if score >= 0.05
+                if score >= 0.90
             }
 
             processed_output.append({
                 "tags": filtered_tags,
-                "top_tag": res['labels'][0] if res['labels'] else None
+                "primary_stressor": res['labels'][0] if res['labels'] else None
+                "confidence": round(res['scores'][0], 4) if res['scores'] else 0,
+                "high_confidence_alert": res['scores'][0] >=0.95
             })
 
         return processed_output[0] if is_single else processed_output
