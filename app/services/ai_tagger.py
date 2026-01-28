@@ -15,19 +15,16 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "valhalla/distilbart-mnli-12-1"
 
 # Adding default biological and environmental labels for OSDR context
+# Consolidating Labels to prevent probabliity splitting
 DEFAULT_LABELS = [
-    "Spaceflight",
-    "Microgravity",
-    "Liver Metabolism",
+    "Spaceflight Environment",
     "Ground Control",
-    "Metabolic Stress",
-    "Radiation Exposure",
-    "Immune Response",
-    "Muscular Atrophy",
-    "Musculoskeletal System",
-    "DNA Damage",
+    "Metabolic Dysregulation",
+    "Radiation Stress",
+    "Immune Dysfunction",
+    "Musculoskeletal Atrophy",
+    "DNA Damage & Repair",
     "Oxidative Stress",
-    "Plant Growth",
     "Tissue Regeneration",
     "Transcriptional Profiling",
 ]
