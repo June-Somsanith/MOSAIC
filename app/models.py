@@ -1,0 +1,33 @@
+# Database models
+# Defines persisted data
+# implements relationships between Studies, AI Tags, and Orthology Maps
+
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from .database import Base
+
+class Study(Base):
+    """
+    Main Study Model
+    Stores core metadata called from GeneLab/OSDR
+    """
+    __tablename__ = "studies"
+
+    # Use GeneLab ID as primary key for lookups
+
+
+class AITag(Base):
+    """
+    AI Tag Model
+    Stores biological stressors identified by DistilBART model
+    """
+    __tablename__ = "ai_tags"
+
+class OrthologyMap(Base):
+    """
+    Orthology Model
+    Stores mapping between source and target species to bypass repeat API lookups...
+    """
+    
+    __tablename__ = "ortholog_maps"
