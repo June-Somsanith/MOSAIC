@@ -81,3 +81,16 @@ class FileParser:
     @staticmethod
     def parse_fasta(file_path: str) -> List[Dict[str, str]]:
         """Extract gene headers from FASTA files for orthology recruitment."""
+        sequences = []
+        
+        try:
+            with open(file_path, 'r') as f:
+                current_id = None
+                for line in f:
+                    if line.startswith(">"):
+                        current_id = line[1:].strip().split()[0]
+                        sequences.append({"gene_id": current_id})
+            return sequences
+        except Exception as e:
+            logger.error(f"FASTA parse error: {str(e)}")
+            return []
