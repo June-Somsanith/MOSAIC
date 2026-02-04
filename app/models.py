@@ -46,3 +46,12 @@ class OrthologyMap(Base):
     """
     
     __tablename__ = "ortholog_maps"
+
+    id = Column(Integer, primary_key = True, index = True)
+    source_id = Column(String, index = True, nullable = False)
+    target_id = Column(String, index = True, nullable = False)
+    source_species = Column(String, nullable = False)
+    target_species = Column(String, nullable = False)
+
+    # Ensureing we don't store same mapping twice
+    __mapper_args__ = {"confirm_deleted_rows": False}
