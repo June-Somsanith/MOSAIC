@@ -18,7 +18,7 @@ class Study(Base):
 
     id = Column(String, primary_key = True, index = True)
     title = Column(String, nullable = False)
-    description = Column(Text, nullble = True)
+    description = Column(Text, nullable = True)
     mission = Column(String, nullable = True)
     created_at = Column(DateTime(timezone = True), server_default = func.now())
 
