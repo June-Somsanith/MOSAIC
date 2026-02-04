@@ -16,6 +16,14 @@ class Study(Base):
 
     # Use GeneLab ID as primary key for lookups
 
+    id = Column(String, primary_key = True, index = True)
+    title = Column(String, nullable = False)
+    description = Column(Text, nullble = True)
+    mission = Column(String, nullable = True)
+    created_at = Column(DateTime(timezone = True), server_default = func.now())
+
+    # One to many relationship with AI tags (study can have mult bio stressor tags)
+    ai_tags = relationship("AITag", back_populates = "study", cascade = "all, delete-orphan")
 
 class AITag(Base):
     """
