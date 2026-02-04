@@ -32,6 +32,13 @@ class AITag(Base):
     """
     __tablename__ = "ai_tags"
 
+    id = Column(Integer, primary_key = True, index = True)
+    study_id = Column(String, ForeignKey("studies.id"), nullable = False)
+    label = Column(String, nullable = False, index = True)
+    confidence = Column(Float, nullable = False)
+
+    study = relationship("Study", back_populates = "ai_tags")
+
 class OrthologyMap(Base):
     """
     Orthology Model
