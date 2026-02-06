@@ -168,21 +168,6 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
         "cache_hits": len(payload.gene_ids) - len(missing_ids)
     }
 
-
-    try:
-        mapping = await OrthologyService.map_gene_ids(
-            gene_ids = payload.gene_ids,
-            target_species = payload.target_species
-        )
-        return{
-            "source_gene_count": len(payload.gene_ids),
-            "mapped_gene_count": len(mapping),
-            "mappings": mapping
-        }
-    except Exception as e:
-        logger.error(f"Orthology Mapping Failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/analyze/pca")
 async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
     try:
