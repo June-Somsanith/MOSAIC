@@ -201,7 +201,7 @@ async def auto_tag_text(payload: AIRequest):
 
 @app.post("/studies/batch_process")
 async def get_batch_studies(ids: List[str]):
-    """Orchestrates high-volume batch processing for multiple study IDs."""
+    """High-volume batch processing for multiple study IDs."""
     if len(ids) > 5:
         # Creating an interpretability warning
         logger.warning("Request for >5 studies. Proceeding with warning.")
