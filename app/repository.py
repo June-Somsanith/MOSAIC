@@ -13,7 +13,7 @@ class StudyRepository:
     def get_study(db: Session, study_id: str):
         return db.query(models.Study).filter(models.Study.id == study_id).first()
     @staticmethod
-    def create_study(db: Session, study_data: dict, ai_tags: List[dict])
+    def create_study(db: Session, study_data: dict, ai_tags: List[dict]):
         # 1. Creating study record
         db_study = models.Study(
             id = study_data["source_id"],

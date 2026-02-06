@@ -1,12 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import pandas as pd
 import logging
 
-# Configure Logging (Production Standard)
-logging.basicConfig(level = logging.INFO)
-logger = logging.getLogger("MOSAIC")
+# Database/Persistence Recruitment
+from app.database import engine, Base, get_db
+from app.models import Study, AITag, OrthologyMap
+from app.repository import StudyRepository, OrthologyRepository
+from app.schemas import StudyMetadata, ErrorResponse
 
 # Schemas
 from app.schemas import StudyMetadata, ErrorResponse
@@ -17,11 +20,18 @@ from app.services.orthology import OrthologyService
 from app.services.analytics import AnalyticsService
 from app.services.ai_tagger import AITaggerServices
 
+# Configure Logging (Production Standard)
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger("MOSAIC")
+
+# database anatomy initiation
+Base.metadata.create_all(bind = engine)
+
 # 1. FastAPI Application Instance
 app = FastAPI(
     title = "MOSAIC BACKEND API",
-    description = "Multi-Organism Spaceflight Analysis and Integrated Comparison",
-    version = "1.0.0"
+    description = "Multi-Organism Spaceflight Analysis and Integrated Comparison with Persistence Layer.",
+    version = "1.1.0"
 )
 
 # 2. Request AI Tagging Service Schema
@@ -32,6 +42,10 @@ class AIRequest(BaseModel):
     organism: List[str] = []
     mission: Optional[str] = None
     labels: Optional[List[str]] = None
+
+class OrthologyRequest(BaseModel):
+    gene_ids: List[str]
+    target_species: Optional[str] = "human"
 
 @app.get("/")
 def read_root():
@@ -49,9 +63,31 @@ async def get_study_metadata(glds_id: str):
     return metadata
 
 @app.get("/studies/{glds_id}/enriched", response_model=dict)
-async def get_enriched_study_metadata(glds_id: str):
-    # Integrating set fetches metadata from OSDR and immediately applies AI-driven context tagging.
+async def get_enriched_study_metadata(glds_id: str, db: Session = Depends(get_db)):
+    """
+    Enriched metadata pipeline with metabolic caching. Checks db before triggering AI Tagging.
+    """
     try:
+        # 0.5. Check Cache
+        cache_study = StudyRepository.get_study(db, glds_id)
+        if cache_study:
+            logger.info(f"CACHE HIT: Study {glds_id} recruited from persistence.")
+            return{
+                "source_id": cache_study.id,
+                "title": cache_study.title,
+                "metadata": {
+                    "source_id": cache_study.id,
+                    "title": cache_study.title,
+                    "description": cache_study.description,
+                    "mission": cache_study.mission
+                },
+                "ai_classification": {
+                    "tags": {tag.label: tag.confidence for tag in cache_study.ai_tags},
+                    "top_tag": cache_study.ai_tags[0].label if cache_study.ai_tags else None
+                },
+                "status": "cached_recruitment"
+            }
+
         # 1. Ingestion Phase: genelab.py fetch
         study_metadata = await fetch_study_metadata(glds_id)
 
@@ -64,26 +100,75 @@ async def get_enriched_study_metadata(glds_id: str):
             organism=study_metadata.organism
         )
 
+        # 2.5. Persistance Phase
+        formatted_tags = [
+            {"label": label, "confidence": conf}
+            for label, conf in ai_analysis.get("tags", {}).items()
+        ]
+
+        StudyRepository.create_study(
+            db = db,
+            study_data = study_metadata.dict(),
+            ai_tags = formatted_tags
+        )
+
         # 3. Aggregation Phase: Merge for complete biological context
         return {
             "source_id": study_metadata.source_id,
             "title": study_metadata.title,
             "metadata": study_metadata.dict(),
-            "ai_classification": ai_analysis
+            "ai_classification": ai_analysis,
+            "status": "freshly_persisted"
         }
     
     except Exception as e:
         logger.error(f"Enriched Data Pipeline Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
 
-class OrthologyRequest(BaseModel):
-    gene_ids: List[str]
-    target_species: Optional[str] = "human"
 
 # 4. Analytics and Orthology
 
 @app.post("/analyze/orthology")
-async def analyze_orthology(payload: OrthologyRequest):
+async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get_db)):
+    """
+    Analyzes gene orthology with hybrid cache/fetch logic;
+    reduces latency by avoiding redundant ensembl REST calls.
+    """
+    final_mapping = {}
+    missing_ids = []
+
+    # 1. Check for orthology cache
+    for gid in payload.gene_ids:
+        cached_map = OrthologyRepository.get_mapping(db, gid, payload.target_species)
+        if cached_map:
+            final_mapping[gid] = cached_map.target_id
+        else:
+            missing_ids.append(gid)
+
+    # 2. Fetch missing ids from ensembl
+    if missing_ids:
+        logger.info(f"Recruting Ensembl for {len(missing_ids)} missing mappings.")
+        new_mappings = await OrthologyService.map_gene_ids(
+            gene_ids = missing_ids,
+            target_species = payload.target_species
+        )
+
+        # 3. Persist new mappings to memory
+        for source, target in new_mappings.items():
+            source_species = OrthologyService.detect_source_species(source)
+            OrthologyRepository.save_mapping(
+                db, source, target, source_species, payload.target_species
+            )
+            final_mapping[source] = target
+
+    return {
+        "source_gene_count": len(payload.gene_ids),
+        "mapped_gene_count": len(final_mapping),
+        "mappings": final_mapping,
+        "cache_hits": len(payload.gene_ids) - len(missing_ids)
+    }
+
+
     try:
         mapping = await OrthologyService.map_gene_ids(
             gene_ids = payload.gene_ids,
