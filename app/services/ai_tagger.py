@@ -5,6 +5,7 @@
 from transformers import pipeline
 import torch
 import logging
+import os
 from typing import List, Dict, Union, Optional
 
 # Logging configuration
@@ -34,6 +35,9 @@ class AITaggerServices:
 
     @classmethod
     def get_classifier(cls):
+        """
+        Initializes and returns the zero-shot classification pipeline. Caches the model for future use.
+        """
         if cls._classifier is None:
             # 1. Determine if GPU is available
             device = 0 if torch.cuda.is_available() else -1
@@ -57,7 +61,11 @@ class AITaggerServices:
     
     @classmethod
     def tag_text(cls, input_data: Union[str, List[str]], candidate_labels: Optional[List[str]] = None) -> Union[Dict, List[Dict]]:
-        # Standard Zero-shot classification on raw text
+        """
+        Exectures zero-shot classification using the high-performance 'stressor' template
+         - Accepts single string or list of strings for batch processing
+         - Returns tags with confidence scores, primary stressor, and high-confidence alerts
+        """
 
         if not input_data:
             return {"error": "No text provided for tagging."}
@@ -69,6 +77,8 @@ class AITaggerServices:
 
         is_single = isinstance(input_data, str)
         batch = [input_data] if is_single else input_data
+
+        logger.info(f"INFERENCE: Executing biologioal classification rep for {len(batch)} inputs...")
 
         # Execute Batch Inference
         # Pipeline can handle both single string and list of strings
