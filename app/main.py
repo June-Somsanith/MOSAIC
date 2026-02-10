@@ -17,7 +17,7 @@ from app.schemas import StudyMetadata, ErrorResponse
 # Services
 from app.services.genelab import fetch_study_metadata
 from app.services.orthology import OrthologyService
-from app.services.analytics import AnalyticsService
+from app.services.analytics import AnalyticsService, FileParser
 from app.services.ai_tagger import AITaggerServices
 
 # Configure Logging (Production Standard)
@@ -31,7 +31,7 @@ Base.metadata.create_all(bind = engine)
 app = FastAPI(
     title = "MOSAIC BACKEND API",
     description = "Multi-Organism Spaceflight Analysis and Integrated Comparison with Persistence Layer.",
-    version = "1.1.0"
+    version = "1.1.1"
 )
 
 # 2. Request AI Tagging Service Schema
@@ -49,50 +49,54 @@ class OrthologyRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "active", "system": "MOSAIC"}
+    return {"status": "active", "system": "MOSAIC", "persistence": "Active (SQLite)"}
 
-# 3. Data Retrieval & Integrated Enrichment
 @app.get(
     "/studies/{glds_id}",
-    response_model = StudyMetadata,
-    responses = {404: {"model": ErrorResponse}}
+    response_model=StudyMetadata,
+    responses={404: {"model": ErrorResponse}}
 )
-# Fetch study metadata by GeneLab ID
 async def get_study_metadata(glds_id: str):
+    """Simple metadata recruitment from NASA OSDR."""
     metadata = await fetch_study_metadata(glds_id)
     return metadata
 
 @app.get("/studies/{glds_id}/enriched", response_model=dict)
 async def get_enriched_study_metadata(glds_id: str, db: Session = Depends(get_db)):
     """
-    Enriched metadata pipeline with metabolic caching. Checks db before triggering AI Tagging.
+    Orchestrates the 'Enriched' metadata pipeline with ID Normalization.
+    Ensures 'Postural Integrity' by checking for OSD-prefixed IDs in the cache.
     """
+    # 1. ID NORMALIZATION (The Postural Check)
+    # Ensures raw inputs like '379' match the persisted 'OSD-379' format.
+    clean_id = glds_id if glds_id.startswith("OSD-") else f"OSD-{glds_id.replace('GLDS-', '')}"
+
     try:
-        # 0.5. Check Cache
-        cache_study = StudyRepository.get_study(db, glds_id)
-        if cache_study:
-            logger.info(f"CACHE HIT: Study {glds_id} recruited from persistence.")
-            return{
-                "source_id": cache_study.id,
-                "title": cache_study.title,
+        # 2. Check Cache (Recruitment from Muscle Memory)
+        # Using clean_id here is critical to avoid IntegrityErrors during the Save phase.
+        cached_study = StudyRepository.get_study(db, clean_id)
+        if cached_study:
+            logger.info(f"CACHE HIT: Study {clean_id} recruited from persistence.")
+            return {
+                "source_id": cached_study.id,
+                "title": cached_study.title,
                 "metadata": {
-                    "source_id": cache_study.id,
-                    "title": cache_study.title,
-                    "description": cache_study.description,
-                    "mission": cache_study.mission
+                    "source_id": cached_study.id,
+                    "title": cached_study.title,
+                    "description": cached_study.description,
+                    "mission": cached_study.mission
                 },
                 "ai_classification": {
-                    "tags": {tag.label: tag.confidence for tag in cache_study.ai_tags},
-                    "top_tag": cache_study.ai_tags[0].label if cache_study.ai_tags else None
+                    "tags": {tag.label: tag.confidence for tag in cached_study.ai_tags},
+                    "top_tag": cached_study.ai_tags[0].label if cached_study.ai_tags else None
                 },
                 "status": "cached_recruitment"
             }
 
-        # 1. Ingestion Phase: genelab.py fetch
-        study_metadata = await fetch_study_metadata(glds_id)
+        # 3. Ingestion Phase: Fetch from NASA OSDR
+        study_metadata = await fetch_study_metadata(clean_id)
 
-        # 2. Classification Phase: ai_tagger.py classification
-        # FIX: Changed 'study_metadata.tissues' to 'study_metadata.tissue' to match schema.
+        # 4. Enrichment Phase: AI-Driven Classification
         ai_analysis = AITaggerServices.generate_context_tags(
             description=study_metadata.description,
             tissue=study_metadata.tissue,
@@ -100,19 +104,18 @@ async def get_enriched_study_metadata(glds_id: str, db: Session = Depends(get_db
             organism=study_metadata.organism
         )
 
-        # 2.5. Persistance Phase
+        # 5. Persistence Phase (Saving the Gains)
         formatted_tags = [
-            {"label": label, "confidence": conf}
+            {"label": label, "confidence": conf} 
             for label, conf in ai_analysis.get("tags", {}).items()
         ]
-
+        
         StudyRepository.create_study(
-            db = db,
-            study_data = study_metadata.dict(),
-            ai_tags = formatted_tags
+            db=db,
+            study_data=study_metadata.dict(),
+            ai_tags=formatted_tags
         )
 
-        # 3. Aggregation Phase: Merge for complete biological context
         return {
             "source_id": study_metadata.source_id,
             "title": study_metadata.title,
@@ -125,19 +128,18 @@ async def get_enriched_study_metadata(glds_id: str, db: Session = Depends(get_db
         logger.error(f"Enriched Data Pipeline Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
 
-
 # 4. Analytics and Orthology
 
 @app.post("/analyze/orthology")
 async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get_db)):
     """
-    Analyzes gene orthology with hybrid cache/fetch logic;
-    reduces latency by avoiding redundant ensembl REST calls.
+    Analyzes gene orthology with Hybrid Cache/Fetch logic.
+    Reduces Latency by avoiding redundant Ensembl REST calls.
     """
     final_mapping = {}
     missing_ids = []
 
-    # 1. Check for orthology cache
+    # 1. Check Orthology Cache
     for gid in payload.gene_ids:
         cached_map = OrthologyRepository.get_mapping(db, gid, payload.target_species)
         if cached_map:
@@ -145,15 +147,15 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
         else:
             missing_ids.append(gid)
 
-    # 2. Fetch missing ids from ensembl
+    # 2. Fetch Missing IDs from Ensembl
     if missing_ids:
-        logger.info(f"Recruting Ensembl for {len(missing_ids)} missing mappings.")
+        logger.info(f"Recruiting Ensembl for {len(missing_ids)} missing mappings.")
         new_mappings = await OrthologyService.map_gene_ids(
-            gene_ids = missing_ids,
-            target_species = payload.target_species
+            gene_ids=missing_ids,
+            target_species=payload.target_species
         )
-
-        # 3. Persist new mappings to memory
+        
+        # 3. Persist New Mappings to Muscle Memory
         for source, target in new_mappings.items():
             source_species = OrthologyService.detect_source_species(source)
             OrthologyRepository.save_mapping(
@@ -170,6 +172,9 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
 
 @app.post("/analyze/pca")
 async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
+    """
+    Dimensionality reduction on expression matrices
+    """
     try:
         # 1. Convert incoming JSON list into Pandas DataFrames
         df = pd.DataFrame(data)
@@ -186,7 +191,9 @@ async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
 
 @app.post("/ai/tag")
 async def auto_tag_text(payload: AIRequest):
-    # AI tagging that accepts description, tissue, factors, organism for smart classification
+    """
+    Direct Zero-shot classification for arbitrary biological text.
+    """
     try:
         tagging_results = AITaggerServices.generate_context_tags(
             description = payload.text,
