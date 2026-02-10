@@ -8,7 +8,9 @@ import sys
 import time
 
 # path injection
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__))))
+root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_path not in sys.path:
+    sys.path.append(root_path)
 
 from app.services.ai_tagger import AITaggerServices
 
