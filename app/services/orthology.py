@@ -9,7 +9,7 @@ from typing import List, Dict, Optional, Tuple
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sqlalchemy.orm import Session
 
-from app.models import OrthologyRepository
+from app.repository import OrthologyRepository
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level=logging.INFO)
