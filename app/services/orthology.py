@@ -5,16 +5,18 @@
 import httpx
 import logging
 import asyncio
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from sqlalchemy.orm import Session
+
+from app.models import OrthologyRepository
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("MOSAIC.Orthology")
 
 # Ensembl REST API base URL
 ENSEMBL_API_URL = "https://rest.ensembl.org"
-BATCH_SIZE = 50 
 
 # Adding common names mapping for Ensembl Scientific nomenclature
 
@@ -55,7 +57,7 @@ class OrthologyService:
         retry_if_exception_type(httpx.HTTPStatusError)
         )
     )
-    async def fetch_single_orthology(client: httpx.AsyncClient, gene_id: str, target_species: str) -> Optional[tuple]:
+    async def fetch_single_orthology(client: httpx.AsyncClient, gene_id: str, target_species: str) -> Tuple[str, Optional[str]]:
         """
         Fetches homology for a single gene ID using the GET endpoint.
         Path: /homology/id/:species/:id
@@ -85,40 +87,65 @@ class OrthologyService:
         data = response.json()
             
             # Navigate nested JSON: data -> [0] -> homologies
-        homology_list = data.get("data", [{}])[0].get("homologies", [])
+        try:
+            homology_list = data.get("data", [{}])[0].get("homologies", [])
             
-        for hit in homology_list:
-            target_info = hit.get("target", {})
-            hit_species = str(target_info.get("species", "")).lower().replace("_", "")
-            target_comp = clean_target.lower().replace("_", "")
+            for hit in homology_list:
+                target_info = hit.get("target", {})
+                hit_species = str(target_info.get("species", "")).lower().replace("_", "")
+                target_comp = clean_target.lower().replace("_", "")
                 
-            if hit_species == target_comp:
-                target_id = target_info.get("id")
-                logger.info(f"MATCH FOUND: {gene_id} -> {target_id}")
-                return gene_id, target_id
+                if hit_species == target_comp:
+                    target_id = target_info.get("id")
+                    logger.info(f"MATCH FOUND: {gene_id} -> {target_id}")
+                    return gene_id, target_id
+        except (IndexError, KeyError):
+            pass
             
         return gene_id, None
 
     @classmethod
-    async def map_gene_ids(cls, gene_ids: List[str], target_species: str = "human") -> Dict[str, str]:
+    async def map_gene_ids(cls, db: Session, gene_ids: List[str], target_species: str = "human") -> Dict[str, str]:
         """
         Main entry point. Maps a list of genes in parallel using individual GET requests.
         """
         unique_gene_ids = list(set(gene_ids))
-        logger.info(f"Starting parallel orthology mapping for {len(unique_gene_ids)} genes to {target_species}")
+        final_mapping = {}
+        missing_ids = []
+
+        for gid in unique_gene_ids:
+            cached_map = OrthologyRepository.get_mapping(db, gid, target_species)
+            if cached_map:
+                final_mapping[gid] = cached_map.target_id
+            else:
+                missing_ids.append(gid)
+
+        if not missing_ids:
+            logger.info(f"All {len(gene_ids)} gene IDs were found in cache. No API calls needed.")
+            return final_mapping
+        
+        logger.info(f"Fetching {len(missing_ids)} missing mappings from Ensembl")
 
         async with httpx.AsyncClient() as client:
             # Create concurrent tasks for each unique gene ID
             tasks = [
                 cls.fetch_single_orthology(client, gid, target_species)
-                for gid in unique_gene_ids
+                for gid in missing_ids
             ]
             
             # Execute all tasks concurrently via asyncio.gather
             results = await asyncio.gather(*tasks)
 
-            # Build result dictionary, filtering out None targets
-            final_mapping = {gid: target for gid, target in results if target}
+            for gid, target_id in results:
+                if target_id:
+                    final_mapping[gid] = target_id
+                    source_species = cls.detect_source_species(gid)
+                    OrthologyRepository.save_mapping(db, gid, target_id, source_species, target_species)
+                else:
+                    final_mapping[gid] = "No Ortholog Found"
+                    
 
-        logger.info(f"Mapping completed. Total mapped genes: {len(final_mapping)}. Found {len(final_mapping)} matches.")
+            # Build result dictionary, filtering out None targets
+
+        logger.info(f"Mapping completed. Total mapped genes: {len([v for v in final_mapping.values() if v != 'No Ortholog Found'])}")
         return final_mapping
