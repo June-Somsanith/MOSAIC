@@ -11,12 +11,9 @@ from app.models import Study, AITag, OrthologyMap
 from app.repository import StudyRepository, OrthologyRepository
 from app.schemas import StudyMetadata, ErrorResponse
 
-# Schemas
-from app.schemas import StudyMetadata, ErrorResponse
-
 # Services
 from app.services.genelab import fetch_study_metadata
-from app.services.orthology import OrthologyService
+from app.services.orthology import SPECIES_MAP, OrthologyService
 from app.services.analytics import AnalyticsService, FileParser
 from app.services.ai_tagger import AITaggerServices
 
@@ -136,39 +133,37 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
     Analyzes gene orthology with Hybrid Cache/Fetch logic.
     Reduces Latency by avoiding redundant Ensembl REST calls.
     """
-    final_mapping = {}
-    missing_ids = []
+    try:
+        # 1. Check Orthology Cache
+        target_species_clean = SPECIES_MAP.get(payload.target_species.lower(), payload.target_species.lower())
 
-    # 1. Check Orthology Cache
-    for gid in payload.gene_ids:
-        cached_map = OrthologyRepository.get_mapping(db, gid, payload.target_species)
-        if cached_map:
-            final_mapping[gid] = cached_map.target_id
-        else:
-            missing_ids.append(gid)
+        hits = 0
+        for gid in payload.gene_ids:
+            if OrthologyRepository.get_mapping(db, gid, target_species_clean):
+                hits += 1
 
     # 2. Fetch Missing IDs from Ensembl
-    if missing_ids:
-        logger.info(f"Recruiting Ensembl for {len(missing_ids)} missing mappings.")
-        new_mappings = await OrthologyService.map_gene_ids(
-            gene_ids=missing_ids,
-            target_species=payload.target_species
+        final_mapping = await OrthologyService.map_gene_ids(
+            db,
+            payload.gene_ids,
+            target_species_clean
         )
-        
-        # 3. Persist New Mappings to Muscle Memory
-        for source, target in new_mappings.items():
-            source_species = OrthologyService.detect_source_species(source)
-            OrthologyRepository.save_mapping(
-                db, source, target, source_species, payload.target_species
-            )
-            final_mapping[source] = target
 
-    return {
-        "source_gene_count": len(payload.gene_ids),
-        "mapped_gene_count": len(final_mapping),
-        "mappings": final_mapping,
-        "cache_hits": len(payload.gene_ids) - len(missing_ids)
-    }
+        if hits == 0:
+            logger.info(f"Processing {len(payload.gene_ids)} genes with no cache hits. Full Ensembl recruitment.")
+        else:
+            logger.info(f"Processing {len(payload.gene_ids)} genes with {hits} cache hits. Partial Ensembl recruitment.")
+
+        return {
+            "source_gene_count": len(payload.gene_ids),
+            "mapped_gene_count": len([v for v in final_mapping.values() if v != "No Ortholog Found"]),
+            "mappings": final_mapping,
+            "cache_hits": hits,
+            "status": "complete"
+        }
+    except Exception as e:
+        logger.error(f"Orthology Analysis Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Orthology Error: {str(e)}")
 
 @app.post("/analyze/pca")
 async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):

@@ -30,7 +30,7 @@ SPECIES_MAP = {
 
 class OrthologyService:
     """
-    Production-grade service to handle Gene Orthology mapping.
+    High-Frequency CNS Recruitment tool for cross-species gene mapping.
     Features: Parallel GET requests, Species Detection, Retries, and Error Handling.
     """
 
@@ -68,7 +68,7 @@ class OrthologyService:
         # Remove version suffix (e.g., .15)
         base_id = gene_id.split('.')[0]
         
-        url = f"{ENSEMBL_API_URL}/homology/id/{source_species}/{base_id}"
+        url = f"{ENSEMBL_API_URL}/homology/id/{base_id}"
         
         # Parameters for the GET request
         params = {
@@ -126,7 +126,7 @@ class OrthologyService:
         
         logger.info(f"Fetching {len(missing_ids)} missing mappings from Ensembl")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:
             # Create concurrent tasks for each unique gene ID
             tasks = [
                 cls.fetch_single_orthology(client, gid, target_species)
@@ -134,17 +134,24 @@ class OrthologyService:
             ]
             
             # Execute all tasks concurrently via asyncio.gather
-            results = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for gid, target_id in results:
-                if target_id:
+            for i, res in enumerate(results):
+                gid = missing_ids[i]
+                if isinstance(res, tuple) and res[1]:
+                    target_id = res[1]
                     final_mapping[gid] = target_id
                     source_species = cls.detect_source_species(gid)
-                    OrthologyRepository.save_mapping(db, gid, target_id, source_species, target_species)
+
+                    try:
+                        OrthologyRepository.save_mapping(db, gid, target_id, source_species, target_species)
+                    except Exception as e:
+                        logger.warning(f"PERSISTENCE FAILURE: {gid}: {str(e)}")
                 else:
                     final_mapping[gid] = "No Ortholog Found"
+                    if isinstance(res, Exception):
+                        logger.error(f"Rep for {gid} failed with error: {str(res)}")
                     
-
             # Build result dictionary, filtering out None targets
 
         logger.info(f"Mapping completed. Total mapped genes: {len([v for v in final_mapping.values() if v != 'No Ortholog Found'])}")
