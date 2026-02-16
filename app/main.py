@@ -19,7 +19,7 @@ from app.services.ai_tagger import AITaggerServices
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level = logging.INFO)
-logger = logging.getLogger("MOSAIC")
+logger = logging.getLogger("MOSAIC.Main")
 
 # database anatomy initiation
 Base.metadata.create_all(bind = engine)
@@ -28,8 +28,10 @@ Base.metadata.create_all(bind = engine)
 app = FastAPI(
     title = "MOSAIC BACKEND API",
     description = "Multi-Organism Spaceflight Analysis and Integrated Comparison with Persistence Layer.",
-    version = "1.1.1"
+    version = "1.1.7"
 )
+
+# --- REQUEST SCHEMAS ---
 
 # 2. Request AI Tagging Service Schema
 class AIRequest(BaseModel):
@@ -43,6 +45,8 @@ class AIRequest(BaseModel):
 class OrthologyRequest(BaseModel):
     gene_ids: List[str]
     target_species: Optional[str] = "human"
+
+# --- CORE ROUTES ---
 
 @app.get("/")
 def read_root():
@@ -125,7 +129,7 @@ async def get_enriched_study_metadata(glds_id: str, db: Session = Depends(get_db
         logger.error(f"Enriched Data Pipeline Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
 
-# 4. Analytics and Orthology
+# --- ANALYTICS AND ORTHOLOGY ---
 
 @app.post("/analyze/orthology")
 async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get_db)):
@@ -150,7 +154,7 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
         )
 
         if hits == 0:
-            logger.info(f"Processing {len(payload.gene_ids)} genes with no cache hits. Full Ensembl recruitment.")
+            logger.info(f"Processing {hits} genes with no cache hits. Full Ensembl recruitment.")
         else:
             logger.info(f"Processing {len(payload.gene_ids)} genes with {hits} cache hits. Partial Ensembl recruitment.")
 
@@ -182,7 +186,7 @@ async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
         logger.error(f"PCA Calculation Failed: {str(e)}")
         raise HTTPException(status_code = 500, detail = f"PCA Calculation Error: {str(e)}")
 
-# 5. AI Engineering
+# --- AI ENGINEERING ---
 
 @app.post("/ai/tag")
 async def auto_tag_text(payload: AIRequest):

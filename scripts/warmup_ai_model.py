@@ -35,7 +35,7 @@ def primer_session():
         AITaggerServices.tag_text(test_text)
 
         end_time = time.time()
-        print("\nSUCCESS: System primed in {end_time - start_time:.2f} seconds.")
+        print(f"\nSUCCESS: System primed in {end_time - start_time:.2f} seconds.")
         print("You can now start 'uvicorn' and run the persistence tests with zero lag.")
 
     except Exception as e:

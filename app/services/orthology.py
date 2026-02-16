@@ -67,7 +67,6 @@ class OrthologyService:
         
         # Remove version suffix (e.g., .15)
         base_id = gene_id.split('.')[0]
-        
         url = f"{ENSEMBL_API_URL}/homology/id/{base_id}"
         
         # Parameters for the GET request
