@@ -64,4 +64,23 @@ class SimilarityService:
         return round(score, 4)
     
     @classmethod
-    
+    async def get_functional_similarity(cls, source_ids: str, potential_target_id: str) -> Dict[str, any]:
+        """
+        Comparison set between two genes based on functional annotations
+        """
+        async with httpx.AsyncClient(verify = False) as client:
+            source_task = cls.fetch_go_terms(client, source_ids)
+            target_task = cls.fetch_go_terms(client, potential_target_id)
+
+            source_go, target_go = await asyncio.gather(source_task, target_task)
+
+            score = await cls.calculate_jaccard_score(source_go, target_go)
+
+            return {
+                "source_id": source_ids,
+                "target_id": potential_target_id,
+                "similarity_score": score,
+                "shared_terms_count": len(source_go.intersection(target_go)),
+                "total_unique_terms": len(source_go.union(target_go)),
+                "status": "calculated"
+            }
