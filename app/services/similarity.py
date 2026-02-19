@@ -50,4 +50,18 @@ class SimilarityService:
         
     @classmethod
     async def calculate_jaccard_score(cls, source_go: Set[str], target_go: Set[str]) -> float:
+        """
+        Calculates Jaccard Similarity Index. 
+        Measures interscetion of biological annotations.
+        """
+        if not source_go or not target_go:
+            return 0.0
         
+        intersection = len(source_go.intersection(target_go))
+        union = len(source_go.union(target_go))
+
+        score = float(intersection / union)
+        return round(score, 4)
+    
+    @classmethod
+    
