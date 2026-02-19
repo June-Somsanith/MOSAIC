@@ -20,10 +20,34 @@ class SimilarityService:
 
     @staticmethod
     @retry(
-
+        stop = stop_after_attempt(3)
+        wait = wait_exponential(min = 2, max = 10),
+        retry = (retry_if_exception_type(httpx.RequestError) |
+        retry_if_exception_type(httpx.HTTPStatusError))
     )
     async def fetch_go_terms(client: httpx.AsyncClient, gene_id: str) -> Set[str]:
         """
         Recruits biological GO terms for a gene
         Path: /xrefs/id/:id?external_db=GO
         """
+        base_id = gene_id.split('.')[0]
+        url = f"{ENSEMBL_API_URL}/xrefs/id/{base_id}"
+        params = {"external_db": "GO", "all_levels": "1"}
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+        try:
+            response = await client.get(url, params = params, headers = headers, timeout = 15.0)
+            response.raise_for_status()
+            data = response.json()
+
+            go_ids = {item.get("display_id") for item in data if item.get("display_id", "").startswith("GO:")}
+            logger.info(f"{gene_id} has {len(go_ids)} GO terms.")
+
+            return go_ids
+        except Exception as e:
+            logger.error(f"Failed to recruit fingerprint for {gene_id}: {str(e)}")
+            return set()
+        
+    @classmethod
+    async def calculate_jaccard_score(cls, source_go: Set[str], target_go: Set[str]) -> float:
+        
