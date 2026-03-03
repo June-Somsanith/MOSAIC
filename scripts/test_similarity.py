@@ -2,7 +2,6 @@
 # Verifies GO Term recruitment and Jaccard Symmetry between genes
 
 import asyncio
-import httpx
 import os
 import sys
 
@@ -24,10 +23,12 @@ async def test_functional_symmetry():
         results = await SimilarityService.get_functional_similarity(source_gene, target_gene)
 
         print(f"\nSYSTEM RESULTS:")
-        print(f"    Similarity Score: {results.get('similarity_score', 'N/A')}")
-        print(f"    Source GO Terms: {results.get('shared_terms_count', 'N/A')}")
-        print(f"    Target GO Terms: {results.get('total_unique_terms', 'N/A')}")
-
+        print(f"    Similarity Score:   {results.get('similarity_score', 0.0)}")
+        print(f"    Source GO Count:    {results.get('source_go_count', 0)}")
+        print(f"    Target GO Count:    {results.get('target_go_count', 0)}")
+        print(f"    Shared GO Terms:    {results.get('shared_terms_count', 0)}")
+        print(f"    Total Unique Terms: {results.get('total_unique_terms', 0)}")
+ 
         score = results.get('similarity_score')
         if score > 0:
             print(f"\nSUCCESS: Functional similarity recruited and symmetry calculated.")

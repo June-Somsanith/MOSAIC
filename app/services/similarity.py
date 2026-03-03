@@ -4,7 +4,7 @@
 import httpx
 import logging
 import asyncio
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Optional, Any
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +32,7 @@ class SimilarityService:
         """
         base_id = gene_id.split('.')[0]
         url = f"{ENSEMBL_API_URL}/xrefs/id/{base_id}"
-        params = {"external_db": "GO", "all_levels": "1"}
+        params = {"external_db": "GO", "object_type": "gene"}
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
@@ -82,5 +82,7 @@ class SimilarityService:
                 "similarity_score": score,
                 "shared_terms_count": len(source_go.intersection(target_go)),
                 "total_unique_terms": len(source_go.union(target_go)),
+                "source_go_terms": list(source_go),
+                "target_go_terms": list(target_go),
                 "status": "calculated"
             }
