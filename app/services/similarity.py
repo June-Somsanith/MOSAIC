@@ -20,7 +20,7 @@ class SimilarityService:
 
     @staticmethod
     @retry(
-        stop = stop_after_attempt(3)
+        stop = stop_after_attempt(3),
         wait = wait_exponential(min = 2, max = 10),
         retry = (retry_if_exception_type(httpx.RequestError) |
         retry_if_exception_type(httpx.HTTPStatusError))
@@ -64,12 +64,12 @@ class SimilarityService:
         return round(score, 4)
     
     @classmethod
-    async def get_functional_similarity(cls, source_ids: str, potential_target_id: str) -> Dict[str, any]:
+    async def get_functional_similarity(cls, source_id: str, potential_target_id: str) -> Dict[str, any]:
         """
         Comparison set between two genes based on functional annotations
         """
         async with httpx.AsyncClient(verify = False) as client:
-            source_task = cls.fetch_go_terms(client, source_ids)
+            source_task = cls.fetch_go_terms(client, source_id)
             target_task = cls.fetch_go_terms(client, potential_target_id)
 
             source_go, target_go = await asyncio.gather(source_task, target_task)
@@ -77,7 +77,7 @@ class SimilarityService:
             score = await cls.calculate_jaccard_score(source_go, target_go)
 
             return {
-                "source_id": source_ids,
+                "source_id": source_id,
                 "target_id": potential_target_id,
                 "similarity_score": score,
                 "shared_terms_count": len(source_go.intersection(target_go)),

@@ -8,7 +8,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.similarity import SimilarityServices
+from app.services.similarity import SimilarityService
 
 async def test_functional_symmetry():
     print("="*60)
@@ -21,7 +21,7 @@ async def test_functional_symmetry():
     print(f"Assessing Functional Symmetry: {source_gene} vs {target_gene}")
 
     try:
-        results = await SimilarityServices.get_functional_similarity(source_gene, target_gene)
+        results = await SimilarityService.get_functional_similarity(source_gene, target_gene)
 
         print(f"\nSYSTEM RESULTS:")
         print(f"    Similarity Score: {results.get('similarity_score', 'N/A')}")
