@@ -21,7 +21,18 @@ async def test_functional_symmetry():
     print(f"Assessing Functional Symmetry: {source_gene} vs {target_gene}")
 
     try:
+        results = await SimilarityServices.get_functional_similarity(source_gene, target_gene)
 
+        print(f"\nSYSTEM RESULTS:")
+        print(f"    Similarity Score: {results.get('similarity_score', 'N/A')}")
+        print(f"    Source GO Terms: {results.get('shared_terms_count', 'N/A')}")
+        print(f"    Target GO Terms: {results.get('total_unique_terms', 'N/A')}")
+
+        score = results.get('similarity_score')
+        if score > 0:
+            print(f"\nSUCCESS: Functional similarity recruited and symmetry calculated.")
+        else:
+            print(f"\nWARNING: Zero similarity detected. Check Ensembl Xref availability and GO term recruitment.")
     except Exception as e:
         print(f"\nCRITICAL FAILURE: Similarity recruitment stalled: {str(e)}")
 
