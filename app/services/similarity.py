@@ -32,15 +32,14 @@ class SimilarityService:
         """
         base_id = gene_id.split('.')[0]
         url = f"{ENSEMBL_API_URL}/xrefs/id/{base_id}"
-        params = {"external_db": "GO", "object_type": "gene"}
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
-            response = await client.get(url, params = params, headers = headers, timeout = 15.0)
+            response = await client.get(url, headers = headers, timeout = 15.0)
             response.raise_for_status()
             data = response.json()
 
-            go_ids = {item.get("display_id") for item in data if item.get("display_id", "").startswith("GO:")}
+            go_ids = {item.get("display_id") for item in data if item.get("dbname", "").startswith("GO") and item.get("display_id", "").startswith("GO:")}
             logger.info(f"{gene_id} has {len(go_ids)} GO terms.")
 
             return go_ids
@@ -60,6 +59,9 @@ class SimilarityService:
         intersection = len(source_go.intersection(target_go))
         union = len(source_go.union(target_go))
 
+        if union == 0:
+            return 0.0
+
         score = float(intersection / union)
         return round(score, 4)
     
@@ -77,11 +79,13 @@ class SimilarityService:
             score = await cls.calculate_jaccard_score(source_go, target_go)
 
             return {
-                "source_id": source_id,
+               "source_id": source_id,
                 "target_id": potential_target_id,
                 "similarity_score": score,
                 "shared_terms_count": len(source_go.intersection(target_go)),
                 "total_unique_terms": len(source_go.union(target_go)),
+                "source_go_count": len(source_go), # RECRUITMENT: For diagnostic feedback in validator
+                "target_go_count": len(target_go), # RECRUITMENT: For diagnostic feedback in validator
                 "source_go_terms": list(source_go),
                 "target_go_terms": list(target_go),
                 "status": "calculated"
