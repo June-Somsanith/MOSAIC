@@ -16,6 +16,7 @@ from app.services.genelab import fetch_study_metadata
 from app.services.orthology import SPECIES_MAP, OrthologyService
 from app.services.analytics import AnalyticsService, FileParser
 from app.services.ai_tagger import AITaggerServices
+from app.services.similarity import SimilarityService
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level = logging.INFO)
@@ -34,6 +35,14 @@ app = FastAPI(
 # --- REQUEST SCHEMAS ---
 
 # 2. Request AI Tagging Service Schema
+class OrthologyRequest(BaseModel):
+    gene_ids: List[str]
+    target_species: Optional[str] = "human"
+
+class ComparisionRequest(BaseModel):
+    gene_a: str = Field(..., description="Source Ensembl ID")
+    gene_b: str = Field(..., description="Target Ensembl ID")
+
 class AIRequest(BaseModel):
     text: str
     tissue: List[str] = [] # Aligned to singular to match StudyMetadata schema
@@ -41,10 +50,6 @@ class AIRequest(BaseModel):
     organism: List[str] = []
     mission: Optional[str] = None
     labels: Optional[List[str]] = None
-
-class OrthologyRequest(BaseModel):
-    gene_ids: List[str]
-    target_species: Optional[str] = "human"
 
 # --- CORE ROUTES ---
 
@@ -160,7 +165,8 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
 
         return {
             "source_gene_count": len(payload.gene_ids),
-            "mapped_gene_count": len([v for v in final_mapping.values() if v != "No Ortholog Found"]),
+            "mapped_gene_count": len([v for v in final_mapping.values() if v.get('status') == "MAPPED"]),
+            "fallback_gene_count": len([v for v in final_mapping.values() if v.get('status') == "UNMAPPED"]),
             "mappings": final_mapping,
             "cache_hits": hits,
             "status": "complete"
@@ -168,6 +174,20 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
     except Exception as e:
         logger.error(f"Orthology Analysis Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Orthology Error: {str(e)}")
+
+@app.post("/analyze/similarity")
+async def compare_functional_similarity(payload: ComparisionRequest):
+    """
+    Direct Accessory Set: Compare functional symmetry between any two genes.
+    Uses Gene Ontology (GO) fingerprints to establish biological overlap.
+    """
+    try:
+        logger.info(f"SYMMETRY ASSESSMENT: Comparing {payload.gene_a} <-> {payload.gene_b}")
+        results = await SimilarityService.get_functional_similarity(payload.gene_a, payload.gene_b)
+        return results
+    except Exception as e:
+        logger.error(f"Functional Similarity Comparison Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Similarity Error: {str(e)}")
 
 @app.post("/analyze/pca")
 async def perform_pca(data: List[Dict[str, Any]], n_components: int = 2):
