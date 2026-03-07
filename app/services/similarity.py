@@ -28,21 +28,32 @@ class SimilarityService:
     async def fetch_go_terms(client: httpx.AsyncClient, gene_id: str) -> Set[str]:
         """
         Recruits biological GO terms for a gene
-        Path: /xrefs/id/:id?external_db=GO
+        Path: /ontology/annotations/by_id/:id
         """
         base_id = gene_id.split('.')[0]
         url = f"{ENSEMBL_API_URL}/xrefs/id/{base_id}"
+        params = {"external_db": "GO"}
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
             response = await client.get(url, headers = headers, timeout = 15.0)
+            
+            if response.status_code == 404:
+                logger.warning(f"ID {gene_id} not found in Xref index. Returning empty set.")
+                return set()
+            
             response.raise_for_status()
             data = response.json()
 
-            go_ids = {item.get("display_id") for item in data if item.get("dbname", "").startswith("GO") and item.get("display_id", "").startswith("GO:")}
-            logger.info(f"{gene_id} has {len(go_ids)} GO terms.")
-
+            go_ids = {
+                item.get("display_id") 
+                for item in data 
+                if item.get("display_id", "").startswith("GO:")
+            }
+            
+            logger.info(f"SIGNAL RECRUITED: {gene_id} has {len(go_ids)} GO terms.")
             return go_ids
+
         except Exception as e:
             logger.error(f"Failed to recruit fingerprint for {gene_id}: {str(e)}")
             return set()
@@ -79,13 +90,13 @@ class SimilarityService:
             score = await cls.calculate_jaccard_score(source_go, target_go)
 
             return {
-               "source_id": source_id,
+                "source_id": source_id,
                 "target_id": potential_target_id,
                 "similarity_score": score,
                 "shared_terms_count": len(source_go.intersection(target_go)),
                 "total_unique_terms": len(source_go.union(target_go)),
-                "source_go_count": len(source_go), # RECRUITMENT: For diagnostic feedback in validator
-                "target_go_count": len(target_go), # RECRUITMENT: For diagnostic feedback in validator
+                "source_go_count": len(source_go), 
+                "target_go_count": len(target_go),
                 "source_go_terms": list(source_go),
                 "target_go_terms": list(target_go),
                 "status": "calculated"
