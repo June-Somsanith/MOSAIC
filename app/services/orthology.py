@@ -5,11 +5,12 @@
 import httpx
 import logging
 import asyncio
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sqlalchemy.orm import Session
 
 from app.repository import OrthologyRepository
+from app.services.similarity import SimilarityService
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level=logging.INFO)
@@ -115,7 +116,11 @@ class OrthologyService:
         for gid in unique_gene_ids:
             cached_map = OrthologyRepository.get_mapping(db, gid, target_species)
             if cached_map:
-                final_mapping[gid] = cached_map.target_id
+                final_mapping[gid] = {
+                    "target_id": cached_map.target_id,
+                    "type": "direct_cache",
+                    "status": "MAPPED"
+                }
             else:
                 missing_ids.append(gid)
 
@@ -139,17 +144,25 @@ class OrthologyService:
                 gid = missing_ids[i]
                 if isinstance(res, tuple) and res[1]:
                     target_id = res[1]
-                    final_mapping[gid] = target_id
-                    source_species = cls.detect_source_species(gid)
+                    final_mapping[gid] = {
+                        "target_id": target_id,
+                        "type": "direct_api",
+                        "status": "MAPPED"
+                    }
 
                     try:
                         OrthologyRepository.save_mapping(db, gid, target_id, source_species, target_species)
                     except Exception as e:
                         logger.warning(f"PERSISTENCE FAILURE: {gid}: {str(e)}")
                 else:
-                    final_mapping[gid] = "No Ortholog Found"
-                    if isinstance(res, Exception):
-                        logger.error(f"Rep for {gid} failed with error: {str(res)}")
+                    go_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
+                    final_mapping[gid] = {
+                        "target_id": "No Direct Ortholog",
+                        "type": "functional_fallback",
+                        "status": "UNMAPPED",
+                        "go_terms_count": len(go_fingerprint),
+                        "functional_profile": list(go_fingerprint)[:5]  # Sample biometrics
+                    }
                     
             # Build result dictionary, filtering out None targets
 
