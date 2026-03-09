@@ -121,8 +121,16 @@ class OrthologyService:
                     "type": "direct_cache",
                     "status": "MAPPED"
                 }
+                try:
+                    source_species = cls.detect_source_species(gid)
+                    OrthologyRepository.save_mapping(db, gid, cached_map.target_id, source_species, target_species)
+                except Exception as e:
+                    logger.warning(f"CACHE PERSISTENCE FAILURE: {gid}: {str(e)}")
             else:
+                expanded_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
                 missing_ids.append(gid)
+
+                kegg_hits = [t for t in expanded_fingerprint if t.startswith("KEGG:")]
 
         if not missing_ids:
             logger.info(f"All {len(gene_ids)} gene IDs were found in cache. No API calls needed.")
@@ -147,7 +155,11 @@ class OrthologyService:
                     final_mapping[gid] = {
                         "target_id": target_id,
                         "type": "direct_api",
-                        "status": "MAPPED"
+                        "status": "MAPPED",
+                        "biometric_count": len(expanded_fingerprint),
+                        "kegg_metabolic_hits": len(kegg_hits),
+                        "kegg_metabolic_hits": len(kegg_hits),
+                        "functional_profile": list(expanded_fingerprint)[:5]  # Sample biometrics
                     }
 
                     try:
