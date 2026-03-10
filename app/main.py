@@ -39,7 +39,7 @@ class OrthologyRequest(BaseModel):
     gene_ids: List[str]
     target_species: Optional[str] = "human"
 
-class ComparisionRequest(BaseModel):
+class ComparisonRequest(BaseModel):
     gene_a: str = Field(..., description="Source Ensembl ID")
     gene_b: str = Field(..., description="Target Ensembl ID")
 

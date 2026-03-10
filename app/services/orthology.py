@@ -80,26 +80,16 @@ class OrthologyService:
         
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
-        
-            # FIX: Ensembl homology/id/:species/:id endpoint requires GET, not POST
-        response = await client.get(url, params=params, headers=headers, timeout=10.0)
-                
-        response.raise_for_status()
-        data = response.json()
-            
-            # Navigate nested JSON: data -> [0] -> homologies
         try:
-            homology_list = data.get("data", [{}])[0].get("homologies", [])
+            response = await client.get(url, params=params, headers=headers, timeout=15.0)
+            response.raise_for_status()
+            data = response.json()
             
+            homology_list = data.get("data", [{}])[0].get("homologies", [])
             for hit in homology_list:
                 target_info = hit.get("target", {})
-                hit_species = str(target_info.get("species", "")).lower().replace("_", "")
-                target_comp = clean_target.lower().replace("_", "")
-                
-                if hit_species == target_comp:
-                    target_id = target_info.get("id")
-                    logger.info(f"MATCH FOUND: {gene_id} -> {target_id}")
-                    return gene_id, target_id
+                if str(target_info.get("species", "")).lower().replace("_", "") == clean_target.replace("_", ""):
+                    return gene_id, target_info.get("id")
         except (IndexError, KeyError):
             pass
             
@@ -116,23 +106,16 @@ class OrthologyService:
         missing_ids = []
 
         for gid in unique_gene_ids:
-            cached_map = OrthologyRepository.get_mapping(db, gid, target_species)
+            cached_map = OrthologyRepository.get_mapping(db, gid, clean_target)
             if cached_map:
                 final_mapping[gid] = {
                     "target_id": cached_map.target_id,
                     "type": "direct_cache",
                     "status": "MAPPED"
                 }
-                try:
-                    source_species = cls.detect_source_species(gid)
-                    OrthologyRepository.save_mapping(db, gid, cached_map.target_id, source_species, target_species)
-                except Exception as e:
-                    logger.warning(f"CACHE PERSISTENCE FAILURE: {gid}: {str(e)}")
-            else:
-                expanded_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
-                missing_ids.append(gid)
 
-                kegg_hits = [t for t in expanded_fingerprint if t.startswith("KEGG:")]
+            else:
+                missing_ids.append(gid)
 
         if not missing_ids:
             logger.info(f"All {len(gene_ids)} gene IDs were found in cache. No API calls needed.")
@@ -147,7 +130,6 @@ class OrthologyService:
                 for gid in missing_ids
             ]
             
-            # Execute all tasks concurrently via asyncio.gather
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for i, res in enumerate(results):
@@ -157,25 +139,24 @@ class OrthologyService:
                     final_mapping[gid] = {
                         "target_id": target_id,
                         "type": "direct_api",
-                        "status": "MAPPED",
-                        "biometric_count": len(expanded_fingerprint),
-                        "kegg_metabolic_hits": len(kegg_hits),
-                        "kegg_metabolic_hits": len(kegg_hits),
-                        "functional_profile": list(expanded_fingerprint)[:5]  # Sample biometrics
+                        "status": "MAPPED"
                     }
 
                     try:
-                        OrthologyRepository.save_mapping(db, gid, target_id, source_species, target_species)
+                        source_species = cls.detect_source_species(gid)
+                        OrthologyRepository.save_mapping(db, gid, target_id, source_species, clean_target)
                     except Exception as e:
                         logger.warning(f"PERSISTENCE FAILURE: {gid}: {str(e)}")
                 else:
-                    go_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
+                    expanded_fingerprint = await SimilarityService.fetch_biological_fingerprint(client, gid)
+                    kegg_hits = [t for t in expanded_fingerprint if t.startswith("KEGG:")]
                     final_mapping[gid] = {
                         "target_id": "No Direct Ortholog",
                         "type": "functional_fallback",
                         "status": "UNMAPPED",
-                        "go_terms_count": len(go_fingerprint),
-                        "functional_profile": list(go_fingerprint)[:5]  # Sample biometrics
+                        "biometric_count": len(expanded_fingerprint),
+                        "kegg_metabolic_hits": len(kegg_hits),
+                        "functional_profile": list(expanded_fingerprint)[:5]   # Sample biometrics
                     }
                     
             # Build result dictionary, filtering out None targets
