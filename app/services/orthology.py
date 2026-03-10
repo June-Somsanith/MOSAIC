@@ -80,6 +80,7 @@ class OrthologyService:
         
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
+        
             # FIX: Ensembl homology/id/:species/:id endpoint requires GET, not POST
         response = await client.get(url, params=params, headers=headers, timeout=10.0)
                 
@@ -109,6 +110,7 @@ class OrthologyService:
         """
         Main entry point. Maps a list of genes in parallel using individual GET requests.
         """
+        clean_target = SPECIES_MAP.get(target_species.lower(), target_species.lower())
         unique_gene_ids = list(set(gene_ids))
         final_mapping = {}
         missing_ids = []
