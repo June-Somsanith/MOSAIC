@@ -7,15 +7,17 @@ import asyncio
 from typing import List, Dict, Set, Optional, Any
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+# Configure Logging (Production Standard)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MOSAIC.Similarity")
 
+# Ensembl REST API base URL
 ENSEMBL_API_URL = "https://rest.ensembl.org"
 
 class SimilarityService:
     """
     Bio-symmetry Engine to calculate functional overlap.
-    Uses GO terms to establish a similarity score between disparate genomic entities.
+    Recruits GO terms and KEGG pathways to establish high-intensity biological symmetry.
     """
 
     @staticmethod
@@ -27,12 +29,12 @@ class SimilarityService:
     )
     async def fetch_go_terms(client: httpx.AsyncClient, gene_id: str) -> Set[str]:
         """
-        Recruits biological GO terms for a gene
-        Path: /ontology/annotations/by_id/:id
+        Recruits GO terms and KEGG pathways for a gene via Deep Recruitment.
+        Path: /xrefs/id/:id (Full Range of Motion)
         """
         base_id = gene_id.split('.')[0]
         url = f"{ENSEMBL_API_URL}/xrefs/id/{base_id}"
-        params = {"external_db": "GO"}
+        
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
@@ -46,6 +48,9 @@ class SimilarityService:
             data = response.json()
 
             fingerprint = set()
+            go_count = 0
+            kegg_count = 0
+            
             for item in data:
                 display_id = item.get("display_id", "")
                 dbname = item.get("dbname", "").upper()
@@ -53,12 +58,15 @@ class SimilarityService:
                 # GO terms
                 if display_id.startswith("GO:"):
                     fingerprint.add(display_id)
+                    go_count += 1
                 
-                # KEGG Pathway
+                # KEGG Pathways
                 if "KEGG" in dbname:
-                    fingerprint.add(f"KEGG:{display_id}")
+                    marker = f"KEGG:{display_id}"
+                    fingerprint.add(marker)
+                    kegg_count += 1
             
-            logger.info(f"SIGNAL RECRUITED: {gene_id} has {len(fingerprint)} biometrics (GO + KEGG).")
+            logger.info(f"RECRUITMENT: {gene_id} -> {go_count} GO, {kegg_count} KEGG. Total: {len(fingerprint)}")
             return fingerprint
 
         except Exception as e:
@@ -76,10 +84,8 @@ class SimilarityService:
         
         intersection = len(source_go.intersection(target_go))
         union = len(source_go.union(target_go))
-
         if union == 0:
             return 0.0
-
         score = float(intersection / union)
         return round(score, 4)
     
@@ -92,19 +98,17 @@ class SimilarityService:
             source_task = cls.fetch_go_terms(client, source_id)
             target_task = cls.fetch_go_terms(client, potential_target_id)
 
-            source_go, target_go = await asyncio.gather(source_task, target_task)
+            source_set, target_set = await asyncio.gather(source_task, target_task)
 
-            score = await cls.calculate_jaccard_score(source_go, target_go)
+            score = await cls.calculate_jaccard_score(source_set, target_set)
 
             return {
                 "source_id": source_id,
                 "target_id": potential_target_id,
                 "similarity_score": score,
-                "shared_terms_count": len(source_go.intersection(target_go)),
-                "total_unique_terms": len(source_go.union(target_go)),
-                "source_go_count": len(source_go), 
-                "target_go_count": len(target_go),
-                "source_go_terms": list(source_go),
-                "target_go_terms": list(target_go),
-                "status": "calculated"
+                "shared_biometrics": list(source_set.intersection(target_set)),
+                "source_biometric_count": len(source_set), 
+                "target_biometric_count": len(target_set),
+                "shared_count": len(source_set.intersection(target_set)),
+                "status": "calculated_expanded"
             }

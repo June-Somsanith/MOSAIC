@@ -2,6 +2,7 @@
 # We replaced this with a modular, automated, and streamlined architecture.
 # This engine automatically translates genes between species using the Ensembl REST API.
 
+from xmlrpc import client
 import httpx
 import logging
 import asyncio
@@ -124,7 +125,6 @@ class OrthologyService:
         logger.info(f"Fetching {len(missing_ids)} missing mappings from Ensembl")
 
         async with httpx.AsyncClient(verify=False) as client:
-            # Create concurrent tasks for each unique gene ID
             tasks = [
                 cls.fetch_single_orthology(client, gid, target_species)
                 for gid in missing_ids
@@ -150,16 +150,21 @@ class OrthologyService:
                 else:
                     expanded_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
                     kegg_hits = [t for t in expanded_fingerprint if t.startswith("KEGG:")]
+                    
                     final_mapping[gid] = {
                         "target_id": "No Direct Ortholog",
                         "type": "functional_fallback",
                         "status": "UNMAPPED",
                         "biometric_count": len(expanded_fingerprint),
                         "kegg_metabolic_hits": len(kegg_hits),
-                        "functional_profile": list(expanded_fingerprint)[:5]   # Sample biometrics
+                        "functional_profile": list(expanded_fingerprint)[:5] 
                     }
                     
-            # Build result dictionary, filtering out None targets
-
+                    try:
+                        source_species = cls.detect_source_species(gid)
+                        OrthologyRepository.save_mapping(db, gid, "No Direct Ortholog", source_species, clean_target)
+                    except Exception as e:
+                        logger.warning(f"FALLBACK PERSISTENCE FAILURE: {gid}: {str(e)}")
+                    
         logger.info(f"Mapping completed. Total mapped genes: {len([v for v in final_mapping.values() if v != 'No Ortholog Found'])}")
         return final_mapping
