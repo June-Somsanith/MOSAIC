@@ -148,7 +148,7 @@ class OrthologyService:
                     except Exception as e:
                         logger.warning(f"PERSISTENCE FAILURE: {gid}: {str(e)}")
                 else:
-                    expanded_fingerprint = await SimilarityService.fetch_biological_fingerprint(client, gid)
+                    expanded_fingerprint = await SimilarityService.fetch_go_terms(client, gid)
                     kegg_hits = [t for t in expanded_fingerprint if t.startswith("KEGG:")]
                     final_mapping[gid] = {
                         "target_id": "No Direct Ortholog",

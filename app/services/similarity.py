@@ -39,20 +39,27 @@ class SimilarityService:
             response = await client.get(url, headers = headers, timeout = 15.0)
             
             if response.status_code == 404:
-                logger.warning(f"ID {gene_id} not found in Xref index. Returning empty set.")
+                logger.warning(f"ID {gene_id} not found in Xref index.")
                 return set()
             
             response.raise_for_status()
             data = response.json()
 
-            go_ids = {
-                item.get("display_id") 
-                for item in data 
-                if item.get("display_id", "").startswith("GO:")
-            }
+            fingerprint = set()
+            for item in data:
+                display_id = item.get("display_id", "")
+                dbname = item.get("dbname", "").upper()
+                
+                # GO terms
+                if display_id.startswith("GO:"):
+                    fingerprint.add(display_id)
+                
+                # KEGG Pathway
+                if "KEGG" in dbname:
+                    fingerprint.add(f"KEGG:{display_id}")
             
-            logger.info(f"SIGNAL RECRUITED: {gene_id} has {len(go_ids)} GO terms.")
-            return go_ids
+            logger.info(f"SIGNAL RECRUITED: {gene_id} has {len(fingerprint)} biometrics (GO + KEGG).")
+            return fingerprint
 
         except Exception as e:
             logger.error(f"Failed to recruit fingerprint for {gene_id}: {str(e)}")
