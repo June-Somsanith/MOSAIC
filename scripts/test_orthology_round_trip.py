@@ -32,6 +32,18 @@ def run_orthology_roundtrip():
 
         if resp_1.status_code == 200:
             print(f"SUCCESS: Signal reached Ensembl. Latency: {latency_1:.2f}s")
+            data = resp_1.json()
+            mappings = data.get("mappings", {})
+
+            print("\n[Rep 1: Signal Assessment]")
+            for gid, result in mappings.items():
+                m_type = result.get("type", "unknown")
+                t_id = result.get("target_id", "N/A")
+                k_hits = result.get("kegg_metabolic_hits", 0)
+
+                print(f"    - {gid}: {m_type.upper()} -> {t_id}")
+                if m_type == "functional_api":
+                    print(f"   KEGG Metabolic Hits: {k_hits} KEGG pathways recruited.")
         else:
             print(f"FAILED REP 1: {resp_1.status_code} - {resp_1.text}")
             return

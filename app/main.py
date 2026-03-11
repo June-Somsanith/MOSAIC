@@ -176,7 +176,7 @@ async def analyze_orthology(payload: OrthologyRequest, db: Session = Depends(get
         raise HTTPException(status_code=500, detail=f"Orthology Error: {str(e)}")
 
 @app.post("/analyze/similarity")
-async def compare_functional_similarity(payload: ComparisionRequest):
+async def compare_functional_similarity(payload: ComparisonRequest):
     """
     Direct Accessory Set: Compare functional symmetry between any two genes.
     Uses Gene Ontology (GO) fingerprints to establish biological overlap.
