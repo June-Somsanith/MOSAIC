@@ -11,7 +11,16 @@ def test_hedges_g_correction():
     print("=" * 60)
     print("MOSAIC: HEDGES' G VALIDATOR")
     print("=" * 60)
-
+    
+    try:
+        root_check = requests.get(BASE_URL, timeout=2.0)
+        if root_check.status_code != 200:
+            print("ERROR: CNS is unresponsive. Ensure 'uvicorn app.main:app' is running.")
+            return
+    except requests.exceptions.ConnectionError:
+        print("ERROR: CNS Offline. The muscle (server) is not firing.")
+        return
+    
     # Simulation A gene with high fold change but small sample size
     # Flight (n=3): Mean=10.0, SD=2.0
     # Ground (n=3): Mean=5.0, SD=1.5
@@ -31,18 +40,23 @@ def test_hedges_g_correction():
 
         if response.status_code == 200:
             data = response.json()
-            hedges_g = data.get("hedges_g", 0.0)
-            print(f"SUCCESS: Hedges' g calculated: {hedges_g:.4f}")
+            g_score = data.get("hedges_g", 0.0)
+            print(f"SUCCESS: Hedges' g calculated: {g_score:.4f}")
             print(f"Expected: {data.get('interpretation')}")
 
             if g_score < 2.5:
                 print("\nVERIFICATION: Bias-correction factor detected and active.")
             else:
                 print("\nWARNING: Score intensity appears uncorrected. Check Form.")
+
+        elif response.status_code == 404:
+            print(f"FAILED: 404 Not Found.")
+            print(">>> NEUROMUSCULAR DISCONNECT: Endpoint not found.")
+            print(">>> Action: Ensure app/main.py is saved and uvicorn is restarted.")
         else:
             print(f"FAILED: {response.status_code} - {response.text}")
     except requests.exceptions.ConnectionError:
         print(f"ERROR: CNS Offline. Is uvicorn running?")
-        
+
 if __name__ == "__main__":
     test_hedges_g_correction()
