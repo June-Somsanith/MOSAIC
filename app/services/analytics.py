@@ -12,17 +12,42 @@ logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger("MOSAIC.Analytics")
 
 class GenomicRecord(BaseModel):
-    """Strict Pydantic model for individual gene records"""
+    """Strict Pydantic model for individual gene records."""
     gene_id: str
     log2fc: float
     n: int = Field(..., gt = 0, description = "Sample size must be positive")
 
     @field_validator('gene_id')
     @classmethod
-    def clean_id(cls, v):
+    def clean_id(cls, v: str) -> str:
+        """Standardizes Ensembl IDs by removing version suffixes."""
         return v.strip().split('.')[0]
     
 class AnalyticsService:
+    """
+    Unified service for data ingestion, normalization, and dimensionality reduction.
+    Includes Hedges' g correction to handle disparate sample size constraints.
+    """
+
+    @staticmethod
+    def calculate_hedges_g(m1: float, m2: float, n1: int, n2: int, sd1: float, sd2: float) -> float:
+        """
+        Calculates Hedges' g for bias-corrected effect size.
+        Formula: g = d * (1 - (3 / (4 * (n1 + n2) - 9)))
+        Used to normalize signals between small spaceflight groups and large controls.
+        """
+        pooled_sd = np.sqrt(((n1 - 1) * sd1**2 + (n2 - 1) * sd2**2) / (n1 + n2 - 2))
+
+        if pooled_sd == 0:
+            return 0.0
+        cohens_d = (m1 - m2) / pooled_sd
+
+        correction_factor = 1 - (3 / (4 * (n1 + n2) - 9))
+        hedges_g = cohens_d * correction_factor
+
+        logger.info(f"MATHEMATICAL LOCKOUT: Hedges' g calculated: {hedges_g:.4f} (n1={n1}, n2={n2})")
+        return float(hedges_g)
+    
     # Consolidateing logic and methods from 'Merging_dataframes.txt' and 'AWG...R' scripts
     
     @staticmethod
@@ -43,7 +68,7 @@ class AnalyticsService:
         if total_weight == 0:
             return 0.0
         
-        return float(weighted_sum / total_weight)
+        return float(weighted_sum / total_weight) if total_weight > 0 else 0.0
         
     @staticmethod
     def merge_datasets(datasets: List[pd.DataFrame], on_col: str = "Gene.ID") -> pd.DataFrame:
