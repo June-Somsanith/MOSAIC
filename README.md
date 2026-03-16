@@ -24,7 +24,7 @@ The `schemas.py` defines the Pydantic models and acts as a filter. This layer en
 
 The `main.py` utilizes FASTAPI and Uvicorn to coordinat the other scripts.
 
-## 2. Phase 1: Core Data Infrastructure
+## Phase 1: Core Data Infrastructure
 
 ### 1. Installing dependencies
 
@@ -79,8 +79,10 @@ The first version of this test resulted in a 0.96 confidence score, which indica
 To prevent redundant API expenditure and limit computational inefficincy, we implemented a persistent data access layer to establish systemic caching.
 
 ### Metabolic Caching Layer
+We implemented SQLAlchemy and SQLite to develop a "check-fetch-save" pattern. Successful orthology mapping and AI classification is persisted to the database, allowing the backend to bypass external network latency on repeat requests, achieving near-instantaneous recruitment of previously processed data.
 
 ### Jaccard Similarity Index
+Direct orthology mapping is not always possible, especially when cross-anlayzing organisms from different kingdoms. The Jaccard Similarity Index will be used when recruiting functional analogs. Implementation of the Jaccard Similarity Index allow for the assessment of heterogenous biometric sets of Gene Ontology terms and KEGG metabolic pathways and establish biological overalp. We can estimate biological context bioavailbility wehn sequence-level homology is unmapped.
 
 ## Phase 4: Statistical Accuracy & Precision
 To address heterogenous data that is inherent in spaceflight studies, the engine utilizes Hedges' g. Spaceflight studies often feature small sample ($n<10$). Hedges' g applies a correction factor based on the total degrees of freedom to provide an estimate of gene dysregulation.
