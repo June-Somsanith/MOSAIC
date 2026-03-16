@@ -12,9 +12,7 @@ While MOSAIC was conceived to address challenges in spaceflight research, its ap
 
 # Methods
 
-## 1. Creating the orthologous analysis code
-
-## 2. Cleaning up data/code
+## 1. Core Infrasturcture
 
 Originally we had a collection of different manual scripts. We needed to combine and condense these scripts to run automatically and streamline the logic into a servicable application.
 
@@ -26,7 +24,7 @@ The `schemas.py` defines the Pydantic models and acts as a filter. This layer en
 
 The `main.py` utilizes FASTAPI and Uvicorn to coordinat the other scripts.
 
-## 3. Phase 1: Core Data Infrastructure
+## 2. Phase 1: Core Data Infrastructure
 
 ### 1. Installing dependencies
 
@@ -44,7 +42,7 @@ Pydantic is a data validation library utilized by FastAPI to ensure data sent to
 
 We needed to standardize schema being pulled from Genelab to ensure all incoming data follows a standardized format.
 
-### Connector
+### 3. Connector
 
 genelab.py acts as a connector to fetch data on demand without storing files locally. This is especially important as the genomic data from genelab is quite extensive and can become quite large.
 
@@ -76,6 +74,16 @@ We updated the script for:
 We conducted hypothesis tuning with `test_script.py` to calibrate the AI to interpret text. Our script attempt to yield the highest confidence and best separtion between catoagories within the OSDR studies.
 
 The first version of this test resulted in a 0.96 confidence score, which indicates when the current model is searching for a stressor, it identifies it with near-certainy.
+
+## Phase 3: Persistence & Functional Fallback
+To prevent redundant API expenditure and limit computational inefficincy, we implemented a persistent data access layer to establish systemic caching.
+
+### Metabolic Caching Layer
+
+### Jaccard Similarity Index
+
+## Phase 4: Statistical Accuracy & Precision
+
 
 # Results
 
