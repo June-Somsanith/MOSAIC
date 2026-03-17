@@ -39,3 +39,19 @@ class MetaAnalysis:
 
     @classmethod
     def aggregate_datasets(cls, merged_df: pd.DataFrame, g_cols: List[str], n_cols: List[str]) -> pd.DataFrame:
+        logger.info(f"Initiating meta-analysis across {len(g_cols)} studies...")
+
+        def row_consensus(row):
+            records = []
+            for g_col, n_col in zip(g_cols, n_cols):
+                records.append({
+                    'hedges_g': row[g_col],
+                    'n': row[n_col]
+                })
+            return cls.calculate_hedges_g(records)
+        
+        result_df = merged_df.copy()
+        result_df['consolidated_g'] = result_df.apply(row_consensus, axis=1)
+        logger.info(f"SUCCESS: Consensus signal calculated for {len(result_df)} genomic rows.")
+
+        return result_df
