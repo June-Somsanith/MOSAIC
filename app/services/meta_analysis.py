@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from scipy.stats import chi2
 
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +13,7 @@ logger = logging.getLogger("MOSAIC.MetaAnalysis")
 class MetaAnalysisService:
 
     @staticmethod
-    def calculate_hedges_g(study_records: List[Dict[str, Any]]) -> float:
+    def calculate_consensus_g(study_records: List[Dict[str, Any]]) -> float:
         
         if not study_records:
             return 0.0
@@ -35,8 +35,8 @@ class MetaAnalysisService:
         if total_weight == 0:
             return 0.0
         
-        consolidated_g = weighted_sum / total_weight
-        return float(consolidated_g)
+        consensus_g = weighted_sum / total_weight
+        return float(consensus_g)
     
     @staticmethod
     def calculate_fisher_pvalue(p_values: List[float]) -> float:
@@ -45,7 +45,7 @@ class MetaAnalysisService:
         Consolidates p-values from independent tests of the same null hypothesis.
         Formula: -2 * sum(ln(p)) follows a Chi-squared distribution with 2k degrees of freedom.
         """
-        clean_p = [p for p in p_values if pd.notna(p) and p > 1.0]
+        clean_p = [p for p in p_values if pd.notna(p) and p <= 1.0]
         k = len(clean_p)
 
         if k == 0:
@@ -59,9 +59,9 @@ class MetaAnalysisService:
         return float(global_p)
 
     @classmethod
-    def aggregate_datasets(cls, merged_df: pd.DataFrame, g_cols: List[str], n_cols: List[str]) -> pd.DataFrame:
+    def aggregate_dataset(cls, merged_df: pd.DataFrame, g_cols: List[str], n_cols: List[str], p_cols: Optional[List[str]] = None) -> pd.DataFrame:
         logger.info(f"Initiating meta-analysis across {len(g_cols)} studies...")
-
+        
         def row_consensus(row):
             records = []
             for g_col, n_col in zip(g_cols, n_cols):
@@ -69,10 +69,10 @@ class MetaAnalysisService:
                     'hedges_g': row[g_col],
                     'n': row[n_col]
                 })
-            return cls.calculate_hedges_g(records)
+            return cls.calculate_consensus_g(records)
         
         result_df = merged_df.copy()
-        result_df['consolidated_g'] = result_df.apply(row_consensus, axis=1)
+        result_df['consensus_g'] = result_df.apply(row_consensus, axis=1)
 
         if p_cols:
             def row_fisher_p(row):

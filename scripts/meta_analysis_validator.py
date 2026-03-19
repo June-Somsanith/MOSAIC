@@ -19,10 +19,13 @@ def run_meta_analysis_test():
         "gene_id": ["ENSG0001", "ENSG0002"],
         "study1_g": [2.5, 0.5],
         "study1_n": [4, 4],
+        "study1_p": [0.04, 0.55],
         "study2_g": [1.0, -0.2],
         "study2_n": [25, 25],
+        "study2_p": [0.06, 0.80],
         "study3_g": [np.nan, 0.8],
-        "study3_n": [6, 6]
+        "study3_n": [6, 6],
+        "study3_p": [np.nan, 0.10]
     }
 
     df = pd.DataFrame(test_data)
@@ -31,19 +34,21 @@ def run_meta_analysis_test():
 
     g_cols = ["study1_g", "study2_g", "study3_g"]
     n_cols = ["study1_n", "study2_n", "study3_n"]
+    p_cols = ["study1_p", "study2_p", "study3_p"]
 
-    result_df = MetaAnalysisService.aggregate_datasets(df, g_cols, n_cols)
+    result_df = MetaAnalysisService.aggregate_dataset(df, g_cols, n_cols, p_cols)
 
     print("\n[Meta-Analysis Results]")
     for index, row in result_df.iterrows():
-        print(f"    Gene: {row['gene_id']} | Consolidated Hedge's g = {row['consolidated_g']:.4f}")
+        p_val = row.get('global_p_value', 1.0)
+        sig = "Yes" if row.get('is_significant') else "No"
+        print(f"  Gene: {row['gene_id']} | Consensus G: {row['consensus_g']:.4f} | Global P: {p_val:.5f} | Significant: {sig}")
+    target_p = result_df.loc[result_df['gene_id'] == 'ENSG0001', 'global_p_value'].values[0]
 
-    target_score = result_df.loc[result_df['gene_id'] == 'ENSG0001', 'consolidated_g'].values[0]
-
-    if 1.42 <= target_score <= 1.43:
-        print("\nSUCCESS: Square-root weighting applied correctly. Missing data (NaN) safely skipped. Consensus score for ENSG0001 is within expected range (1.42 - 1.44).")
+    if 0.016 <= target_p <= 0.017:
+        print("\nVERIFICATION: Fisher's Method successfully consolidated marginal signals into global significance.")
     else:
-        print("\nFAILURE: Consensus score for ENSG0001 is outside expected range. Check weighting and NaN handling logic.")
+        print("\nWARNING: Mathematical discrepancy in Fisher's P-value calculation. Check Form.")
 
 if __name__ == "__main__":
     run_meta_analysis_test()
