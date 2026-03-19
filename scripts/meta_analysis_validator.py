@@ -38,7 +38,7 @@ def run_meta_analysis_test():
     for index, row in result_df.iterrows():
         print(f"    Gene: {row['gene_id']} | Consolidated Hedge's g = {row['consolidated_g']:.4f}")
 
-    target_score = result_df.loc[result_df['gene_id'] == 'ENSG0001', 'consensus_g'].values[0]
+    target_score = result_df.loc[result_df['gene_id'] == 'ENSG0001', 'consolidated_g'].values[0]
 
     if 1.42 <= target_score <= 1.43:
         print("\nSUCCESS: Square-root weighting applied correctly. Missing data (NaN) safely skipped. Consensus score for ENSG0001 is within expected range (1.42 - 1.44).")
