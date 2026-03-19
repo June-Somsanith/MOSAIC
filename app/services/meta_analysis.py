@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import logging
 from typing import List, Dict, Any
+from scipy.stats import chi2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MOSAIC.MetaAnalysis")
@@ -36,6 +37,26 @@ class MetaAnalysisService:
         
         consolidated_g = weighted_sum / total_weight
         return float(consolidated_g)
+    
+    @staticmethod
+    def calculate_fisher_pvalue(p_values: List[float]) -> float:
+        """
+        Calculates the global statistical significance using Fisher's Method.
+        Consolidates p-values from independent tests of the same null hypothesis.
+        Formula: -2 * sum(ln(p)) follows a Chi-squared distribution with 2k degrees of freedom.
+        """
+        clean_p = [p for p in p_values if pd.notna(p) and p > 1.0]
+        k = len(clean_p)
+
+        if k == 0:
+            return 1.0
+        
+        clipped_p = np.clip(clean_p, a_min = 1e-300, a_max = 1.0)
+        chi_square_stat = -2.0 * np.sum(np.log(clipped_p))
+        df = 2 * k
+        global_p = chi2.sf(chi_square_stat, df)
+        
+        return float(global_p)
 
     @classmethod
     def aggregate_datasets(cls, merged_df: pd.DataFrame, g_cols: List[str], n_cols: List[str]) -> pd.DataFrame:
@@ -52,6 +73,16 @@ class MetaAnalysisService:
         
         result_df = merged_df.copy()
         result_df['consolidated_g'] = result_df.apply(row_consensus, axis=1)
-        logger.info(f"SUCCESS: Consensus signal calculated for {len(result_df)} genomic rows.")
 
+        if p_cols:
+            def row_fisher_p(row):
+                p_vals = [row[p_col] for p_col in p_cols]
+                return cls.calculate_fisher_pvalue(p_vals)
+            
+            result_df['global_p_value'] = result_df.apply(row_fisher_p, axis=1)
+
+            result_df['is_significant'] = result_df['global_p_value'] < 0.05
+            logger.info(f"SUCCESS: Global p-values calculated using Fisher's method. Significant results flagged.")
+
+        logger.info(f"SUCCESS: Consensus signal calculated for {len(result_df)} genomic rows.")
         return result_df
