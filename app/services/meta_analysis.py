@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MOSAIC.MetaAnalysis")
 
-class MetaAnalysis:
+class MetaAnalysisService:
 
     @staticmethod
     def calculate_hedges_g(study_records: List[Dict[str, Any]]) -> float:
