@@ -29,4 +29,25 @@ def mock_meta_analysis_endpoint(payload: dict) -> dict:
     }
 
 def run_constraint_test():
-    
+    print("=" * 60)
+    print("MOSAIC: 5-STUDY CONSTRAINT VALIDATOR (SAFETY RACK)")
+    print("=" * 60)
+
+    safe_payload = {"study_ids": ["OSD-137", "OSD-379", "OSD-899"]}
+    print("\n[TEST 1: Safe Training Volume (3 Studies)]")
+    resp1 = mock_meta_analysis_endpoint(safe_payload)
+    print(f"  Count: {resp1['study_count']}")
+    print(f"  Warning: {resp1['warning']}")
+    if resp1['warning'] is None:
+        print("  VERIFICATION: Safe volume passed without warnings. Postural integrity intact.")
+
+    ego_payload = {"study_ids": ["OSD-1", "OSD-2", "OSD-3", "OSD-4", "OSD-5", "OSD-6", "OSD-7"]}
+    print("\n[TEST 2: Convoluted Data (7 Studies)]")
+    resp2 = mock_meta_analysis_endpoint(ego_payload)
+    print(f"  Count: {resp2['study_count']}")
+    print(f"  Warning: {resp2['warning']}")
+    if resp2['warning']:
+        print("  VERIFICATION: Warning successfully generated to prevent convolution.")
+
+if __name__ == "__main__":
+    run_constraint_test()
