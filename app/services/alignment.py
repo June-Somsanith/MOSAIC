@@ -1,6 +1,7 @@
 # Species Alignment Service
 # Normalizes heterogeneous species dataframes to a common Human Ensembl index
 
+from fastapi import logger
 import pandas as pd
 import logging
 from typing import List, Dict, Any
