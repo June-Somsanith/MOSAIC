@@ -1,13 +1,15 @@
 # Species Alignment Service
 # Normalizes heterogeneous species dataframes to a common Human Ensembl index
 
-from fastapi import logger
 import pandas as pd
 import logging
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.services.orthology import OrthologyService
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("MOSAIC.Alignment")
 
 class AlignmentService:
     @staticmethod
