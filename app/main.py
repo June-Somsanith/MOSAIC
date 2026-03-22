@@ -36,10 +36,6 @@ app = FastAPI(
 
 # 2. Request AI Tagging Service Schema
 
-class ComparisonRequest(BaseModel):
-    gene_a: str = Field(..., description="Source Ensembl ID")
-    gene_b: str = Field(..., description="Target Ensembl ID")
-
 class AIRequest(BaseModel):
     text: str
     tissue: List[str] = [] # Aligned to singular to match StudyMetadata schema
@@ -66,12 +62,63 @@ class ComparisonRequest(BaseModel):
     gene_a: str = Field(..., description="Source Ensembl ID")
     gene_b: str = Field(..., description="Target Ensembl ID")
 
+class MetaAnalysisRequest(BaseModel):
+    """Request schema for multi-study meta-analysis and consensus ranking."""
+    
+    study_ids: List[str] = Field(..., description="List of NASA OSDR accession IDs to aggregate")
 
 # --- CORE ROUTES ---
 
 @app.get("/")
 def read_root():
     return {"status": "active", "system": "MOSAIC", "persistence": "Active (SQLite)"}
+
+@app.post("/studies/batch_process")
+async def get_batch_studies(ids: List[str]):
+    """High-volume batch processing for multiple study IDs."""
+    if len(ids) > 5:
+        # Creating an interpretability warning
+        logger.warning("Request for >5 studies. Proceeding with warning.")
+
+    study_metadatas = []
+    descriptions = []
+        
+    for study_id in ids:
+        try:
+            # 1. Fetch all metadata concurrently
+            data_obj = await fetch_study_metadata(study_id)
+
+            if data_obj:
+                study_dict = data_obj.dict()
+                study_metadatas.append(study_dict)
+                descriptions.append(study_dict.get("description", ""))
+        
+        except Exception as e:
+            logger.error(f"Skipping {study_id} due to fetch error: {str(e)}")
+            continue
+
+    # 2. Batch AI Tagging
+    if descriptions:
+        try:
+            ai_batch_results = AITaggerServices.tag_text(descriptions)
+
+            # Added to make sure results are in list for merge loop
+            if isinstance(ai_batch_results, dict):
+                ai_batch_results = [ai_batch_results]
+
+            # 3. Merge AI results back into the study metadata
+            for i in range(min(len(study_metadatas), len(ai_batch_results))):
+                study_metadatas[i]["ai_classification"] = ai_batch_results[i]
+            
+        except Exception as e:
+            logger.error(f"AI Tagging failed for batch: {str(e)}")
+
+    return {
+        "count": len(study_metadatas),
+        "studies": study_metadatas,
+        "batch_status": "complete",
+        "warning": "Data convolution risk" if len(ids) > 5 else None
+    }
 
 @app.get(
     "/studies/{glds_id}",
@@ -175,6 +222,37 @@ async def calculate_effect_size(payload: HedgesRequest):
     except Exception as e:
         logger.error(f"Hedges' g Calculation Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/analyze/meta")
+async def perform_meta_analysis(payload: MetaAnalysisRequest, db: Session = Depends(get_db)):
+    """
+    Aggregates multiple studies for meta-analysis and consensus ranking.
+    Implements 5-Study Maximum to prevent data convolution and maintain interpretability.
+    """
+    try:
+        study_count = len(payload.study_ids)
+        
+        if study_count == 0:
+            raise HTTPException(status_code=400, detail="No studies provided for meta-analysis.")
+        
+        warning_msg = None
+        if study_count > 5:
+            warning_msg = (
+                f"INTERPRETABILITY WARNING: Aggregating {study_count} datasets exceeds the recommended "
+                "maximum of 5. Data may be convoluted, and meta-analysis results may be less reliable. Proceed with caution."
+            )
+
+        return {
+            "status": "processing_consensus",
+            "study_count": study_count,
+            "studies_recruited": payload.study_ids,
+            "warning": warning_msg,
+            "message": "Meta-analysis constraint check passed. Ready for matrix aggregation."
+        }
+    
+    except Exception as e:
+        logger.error(f"Meta-analysis Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- AI ENGINEERING ---
 
@@ -195,49 +273,3 @@ async def auto_tag_text(payload: AIRequest):
         logger.error(f"AI Tagging Error: {str(e)}")
         raise HTTPException(status_code = 500, detail = f"AI Error: {str(e)}")
 
-@app.post("/studies/batch_process")
-async def get_batch_studies(ids: List[str]):
-    """High-volume batch processing for multiple study IDs."""
-    if len(ids) > 5:
-        # Creating an interpretability warning
-        logger.warning("Request for >5 studies. Proceeding with warning.")
-
-    study_metadatas = []
-    descriptions = []
-        
-    for study_id in ids:
-        try:
-            # 1. Fetch all metadata concurrently
-            data_obj = await fetch_study_metadata(study_id)
-
-            if data_obj:
-                study_dict = data_obj.dict()
-                study_metadatas.append(study_dict)
-                descriptions.append(study_dict.get("description", ""))
-        
-        except Exception as e:
-            logger.error(f"Skipping {study_id} due to fetch error: {str(e)}")
-            continue
-
-    # 2. Batch AI Tagging
-    if descriptions:
-        try:
-            ai_batch_results = AITaggerServices.tag_text(descriptions)
-
-            # Added to make sure results are in list for merge loop
-            if isinstance(ai_batch_results, dict):
-                ai_batch_results = [ai_batch_results]
-
-            # 3. Merge AI results back into the study metadata
-            for i in range(min(len(study_metadatas), len(ai_batch_results))):
-                study_metadatas[i]["ai_classification"] = ai_batch_results[i]
-            
-        except Exception as e:
-            logger.error(f"AI Tagging failed for batch: {str(e)}")
-
-    return {
-        "count": len(study_metadatas),
-        "studies": study_metadatas,
-        "batch_status": "complete",
-        "warning": "Data convolution risk" if len(ids) > 5 else None
-    }
