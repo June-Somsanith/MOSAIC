@@ -17,6 +17,8 @@ from app.services.orthology import OrthologyService, SPECIES_MAP
 from app.services.similarity import SimilarityService
 from app.services.ai_tagger import AITaggerServices
 from app.services.analytics import AnalyticsService
+from app.services.alignment import AlignmentService
+from app.services.meta_analysis import MetaAnalysisService
 
 # Configure Logging (Production Standard)
 logging.basicConfig(level = logging.INFO)
@@ -242,12 +244,59 @@ async def perform_meta_analysis(payload: MetaAnalysisRequest, db: Session = Depe
                 "maximum of 5. Data may be convoluted, and meta-analysis results may be less reliable. Proceed with caution."
             )
 
+        # Pipeline #1:
+        aligned_datasets = []
+        g_cols = []
+        n_cols = []
+        p_cols = []
+
+        for study_id in payload.study_ids:
+            try:
+                metadata = await fetch_study_metadata(study_id)
+                source_species = metadata.organism[0] if metadata.organism else "human"
+
+            except Exception as e:
+                logger.warning(f"Metadata recruitment failed for {study_id}: {e}")
+                continue
+
+            # Pipeline #2:
+
+            df = pd.DataFrame()
+
+            if not df.empty:
+                aligned_df = await AlignmentService.normalize_to_human(db, df, source_species=source_species, id_col="gene_id")
+
+                g_cols.append(f"{study_id}_log2fc")
+                n_cols.append(f"{study_id}_n")
+                p_cols.append(f"{study_id}_pvalue")
+
+                aligned_datasets.append(aligned_df)
+
+        # Pipeline #3:
+        heatmap_data = []
+        if aligned_datasets:
+            merged_matrix = AnalyticsService.merge_datasets(aligned_datasets, on_col="human_ortholog_id")
+            consensus_df = MetaAnalysisService.aggregate_dataset(merged_matrix, g_cols, n_cols, p_cols)
+
+            if 'is_significant' in consensus_df.columns:
+                significant_df = consensus_df[consensus_df['is_significant'] == True]
+            else:
+                significant_df = consensus_df
+
+            top_consensus = significant_df.sort_values(by="consensus_g", key=abs, ascending=False).head(100)
+            top_consensus = top_consensus.replace({np.nan: None})
+            heatmap_data = top_consensus.to_dict(orient="records")
+
+        else:
+            logger.info("Awaiting matrix ingestion logic to complete the consensus set.")
+
         return {
-            "status": "processing_consensus",
+            "status": "consensus_achieved" if heatmap_data else "processing_consensus",
             "study_count": study_count,
             "studies_recruited": payload.study_ids,
             "warning": warning_msg,
-            "message": "Meta-analysis constraint check passed. Ready for matrix aggregation."
+            "heatmap_data": heatmap_data,
+            "message": "Meta-analysis pipeline executed. Ready for dashboard visualization."
         }
     
     except Exception as e:
