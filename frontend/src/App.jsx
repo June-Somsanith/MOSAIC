@@ -59,4 +59,18 @@ export default function App() {
     if (!response.ok) {
       throw new Error('Failed to execute meta-analysis');
     }
+    
+    const data = await response.json();
+
+    if (data.heatmap_data && data.heatmap_data.length > 0) {
+      setHeatmapPayload(data.heatmap_data);
+    } else {
+      setError("Meta-analysis completed but no heatmap data was returned. Check payload");
     }
+  } catch (err) {
+    setError(err.message || "Failed to execute meta-analysis. Please try again.");
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
