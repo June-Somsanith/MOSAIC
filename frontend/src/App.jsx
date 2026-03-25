@@ -74,3 +74,15 @@ export default function App() {
   }
 };
 
+// --- PLOTLY DATA TRANSFORMATION ---
+const plotlyConfig = useMemo(() => {
+  if (!heatmapPayload) return null;
+
+  const studyColumns = Object.keys(heatmapPayload[0]).filter(key => key.endsWith('_log2fc'));
+const xLabels = studyColumns.map(col => col.replace('_log2fc', ''));
+const yLabels = heatmapPayload.map(row => row.human_ortholog_id || 'Unknown');
+const zValues = heatmapPayload.map(row => {return studyColumns.map(col => {const val = row[col]; return val !== null && val !== undefined ? parseFloat(val) : 0; // Handle NaNs
+  });
+});
+
+  return {};
